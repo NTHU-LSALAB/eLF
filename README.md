@@ -2,11 +2,11 @@
 
 Please have these installed before proceeding
 
-* [clang](https://clang.llvm.org/)
-* [protobuf](https://developers.google.com/protocol-buffers)
-* [grpc](https://grpc.io/)
-* [ninja](https://ninja-build.org/)
-* [meson](https://mesonbuild.com/) >= 0.55
+* [Clang](https://clang.llvm.org/)
+* [Protocol Buffers](https://developers.google.com/protocol-buffers)
+* [gRPC](https://grpc.io/)
+* [Ninja](https://ninja-build.org/)
+* [Meson](https://mesonbuild.com/) >= 0.55
 * [TensorFlow](https://www.tensorflow.org/) < 2
 * CUDA, [NCCL](https://developer.nvidia.com/nccl)
 
