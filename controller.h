@@ -13,11 +13,16 @@ public:
     Controller(const Controller &) = delete;
     virtual ~Controller() {}
 
-    // the callback for worker pool configuration updates
+    // the callback data for worker pool configuration updates
     // conf_id: serial number of the configuration
     // rank: the rank of the worker in this configuration
     // size: the total number of workers in this configuration
-    using update_callback_t = std::function<void(int64_t conf_id, int64_t rank, int64_t size)>;
+    struct UpdateData {
+        int64_t conf_id;
+        int64_t rank;
+        int64_t size;
+    };
+    using update_callback_t = std::function<void(UpdateData)>;
 
     // joined the worker named by the given name
     // name: the name of the worker

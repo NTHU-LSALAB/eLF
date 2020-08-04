@@ -109,6 +109,7 @@ private:
             ready_count = 0;
         }
         bool set_ready(int64_t id) {
+            std::cerr << absl::StrFormat("cfid %d wid %d\n", conf_id, id);
             auto it = workers.find(id);
             if (it == workers.end()) {
                 return false;
@@ -148,7 +149,7 @@ private:
         int64_t size = workers.size();
         for (auto &w : workers) {
             if (auto callback = w.second->callback) {
-                callback(conf_id, rank, size);
+                callback({conf_id, rank, size});
             }
             rank++;
         }
