@@ -213,12 +213,12 @@ public:
     std::unique_ptr<Operator> add_global_variable(std::string identifier) {
         identifier = "[g]" + identifier;
         global_variables.push_back(identifier);
-        return std::make_unique<Allreduce>(*this, identifier);
+        return std::make_unique<Broadcast>(*this, identifier);
     }
     std::unique_ptr<Operator> add_weight_variable(std::string identifier) {
         identifier = "[w]" + identifier;
         weight_variables.push_back(identifier);
-        return std::make_unique<Broadcast>(*this, identifier);
+        return std::make_unique<Allreduce>(*this, identifier);
     }
 
     std::tuple<bool, int64_t> begin_batch() {
