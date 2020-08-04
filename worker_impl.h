@@ -221,7 +221,8 @@ public:
         return std::make_unique<Allreduce>(*this, identifier);
     }
 
-    std::tuple<bool, int64_t> begin_batch() {
+    // should_continue, requires_broadcast, shard_number
+    std::tuple<bool, bool, int64_t> begin_batch() {
         {
             absl::MutexLock l(&conf_mux);
             for (auto next = ready_conf; next != confs.end(); ++next) {
@@ -235,11 +236,14 @@ public:
         int64_t batch_conf_id;
         bool requires_broadcast;
         std::tie(batch_conf_id, requires_broadcast) = ctrl->begin_batch(id, ready_conf->id).get();
+        if (batch_conf_id == -1) {
+            return {false, false, 0};
+        }
         while (current_conf->id != batch_conf_id) {
             current_conf++;
         }
         // TODO: gc
-        return std::make_tuple(requires_broadcast, 0);
+        return {true, requires_broadcast, -99999};
     }
 };
 

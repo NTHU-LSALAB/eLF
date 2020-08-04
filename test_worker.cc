@@ -14,9 +14,11 @@ TEST_CASE("worker") {
     auto broadcast_op = w.add_weight_variable("var1");
     w.commit_and_join();
 
+    bool should_continue;
     bool needs_broadcast;
     int64_t shard_number;
-    std::tie(needs_broadcast, shard_number) = w.begin_batch();
+    std::tie(should_continue, needs_broadcast, shard_number) = w.begin_batch();
+    CHECK(should_continue);
     REQUIRE_FALSE(needs_broadcast);
 
     auto H = std::array<float, 4>{140, 114, 91, 178};
@@ -63,11 +65,21 @@ TEST_CASE("2 workers") {
         auto broadcast_op = w.add_global_variable("var1");
         auto allreduce_op = w.add_weight_variable("var1");
         w.commit_and_join();
-        w.begin_batch();
+        bool should_continue, requires_broadcast;
+        int64_t shard_number;
+        std::tie(should_continue, requires_broadcast, shard_number) = w.begin_batch();
+        CHECK(should_continue);
+        CHECK_FALSE(requires_broadcast);
         worker1_joined.Notify();
 
-        while (!test_done.HasBeenNotified()) {
-            w.begin_batch();
+        while (true) {
+            std::tie(should_continue, requires_broadcast, shard_number) = w.begin_batch();
+            if (!should_continue) {
+                break;
+            }
+            if (test_done.HasBeenNotified()) {
+                w.leave();
+            }
 
             { // broadcast
                 auto H = std::array<float, 4>{26, 83, 62, 30};
@@ -107,7 +119,11 @@ TEST_CASE("2 workers") {
         auto allreduce_op = w.add_weight_variable("var1");
         w.commit_and_join();
 
-        w.begin_batch();
+        bool should_continue, requires_broadcast;
+        int64_t shard_number;
+        std::tie(should_continue, requires_broadcast, shard_number) = w.begin_batch();
+        REQUIRE(should_continue);
+        REQUIRE(requires_broadcast);
 
         { // broadcast
             auto H = std::array<float, 4>{9700, 800, 4900, 7202};
