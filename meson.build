@@ -1,4 +1,4 @@
-project('eLF', 'cpp', version: '0.1-alpha', default_options: ['cpp_std=c++14'])
+project('eLF', 'cpp', version: '0.1-alpha', default_options: ['cpp_std=c++14'], meson_version: '>=0.55')
 
 clang = meson.get_compiler('cpp')
 assert(
@@ -28,7 +28,7 @@ messages_generated = custom_target(
     output: ['@BASENAME@.pb.h', '@BASENAME@.pb.cc', '@BASENAME@.grpc.pb.h', '@BASENAME@.grpc.pb.cc'],
     command: [
         protoc,
-        '--plugin=protoc-gen-grpc=' + grpc_cpp_plugin.path(),
+        '--plugin=protoc-gen-grpc=' + grpc_cpp_plugin.full_path(),
         '--proto_path=@CURRENT_SOURCE_DIR@',
         '--cpp_out=@OUTDIR@',
         '--grpc_out=@OUTDIR@',
@@ -42,7 +42,7 @@ grpc_deps = [
 
 pymod = import('python')
 python_installation = pymod.find_installation('python3')
-python_prog = find_program(python_installation.path())
+python_prog = find_program(python_installation.full_path())
 pybind11_proj = subproject('pybind11')
 pybind11_dep = pybind11_proj.get_variable('pybind11_dep')
 
