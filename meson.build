@@ -40,8 +40,8 @@ grpc_deps = [
 
 test_core = executable(
     'test_core',
-    'test_core.cc', 'controller.cc',
-    dependencies: [test_deps, absl_dep, threads_dep],
+    'test_main.cc', 'test_core.cc', 'controller.cc', 'rpc.cc', messages_generated,
+    dependencies: [test_deps, absl_dep, grpc_deps, threads_dep],
 )
 
 test('core', test_core)

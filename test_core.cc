@@ -1,11 +1,11 @@
 #include <chrono>
 #include <cstdint>
 #include <future>
-
-#include <absl/synchronization/mutex.h>
 #include <stdexcept>
 
-#define CATCH_CONFIG_MAIN
+#include <absl/strings/str_format.h>
+#include <absl/synchronization/mutex.h>
+
 #include <catch2/catch.hpp>
 
 #include "controller.h"
@@ -68,8 +68,35 @@ public:
     };
 };
 
-TEST_CASE("controller") {
-    auto c = create_controller();
+struct TestConcreteController {
+    TestConcreteController() : c(create_controller()) {}
+    Controller *controller() {
+        return c.get();
+    }
+    std::unique_ptr<Controller> c;
+};
+struct TestRemoteController {
+    TestRemoteController()
+        : c(create_controller()), ec(export_controller(c.get(), "localhost:")),
+          rc(connect_controller(absl::StrFormat("localhost:%d", ec->listening_port()))) {}
+    ~TestRemoteController() {
+        ec->stop();
+    }
+    Controller *controller() {
+        return rc.get();
+    }
+    std::unique_ptr<Controller> c;
+    std::unique_ptr<ExportedController> ec;
+    std::unique_ptr<Controller> rc;
+};
+
+TEMPLATE_TEST_CASE("controller",
+    "[controller][rpc]",
+    TestConcreteController,
+    TestRemoteController) {
+
+    TestType helper;
+    auto c = helper.controller();
 
     SECTION("first joined worker has id 1") {
         REQUIRE(1 == c->join("", [&](Controller::UpdateData) {}));
