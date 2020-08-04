@@ -15,10 +15,15 @@ class Controller:
         self._ctrl.stop()
 
 
+def noop():
+    pass
+
+
 class Worker(_elf.Worker):
     def __init__(self, controller_address):
         self._ctrl = _elf.connect_controller(controller_address)
         super().__init__(self._ctrl)
+        self.broadcast_fn = noop
 
     def shard_generator(self, list_=None, *, batch_size=1):
         while True:
@@ -34,3 +39,4 @@ class Worker(_elf.Worker):
 
     def broadcast(self):
         print('broadcast triggered')
+        self.broadcast_fn()

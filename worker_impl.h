@@ -167,6 +167,7 @@ public:
         id = ctrl->join(name, [this](Controller::UpdateData data) {
             absl::MutexLock l(&conf_mux);
             if (deleted) {
+                std::cerr << "calling callback of deleted Worker\n";
                 return;
             }
             confs.emplace_back(gpu, data.conf_id, data.rank, data.size,
@@ -235,6 +236,7 @@ public:
 
     // should_continue, requires_broadcast, shard_number
     std::tuple<bool, bool, int64_t> begin_batch() {
+        assert(first_conf_pushed.HasBeenNotified());
         {
             absl::MutexLock l(&conf_mux);
             for (auto next = ready_conf; next != confs.end(); ++next) {
