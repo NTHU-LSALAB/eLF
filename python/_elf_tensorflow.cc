@@ -9,10 +9,10 @@
 using namespace tensorflow;
 
 void *stringToPtr(const std::string &s) {
-    std::istringstream iss(s);
-    uintptr_t p;
-    iss >> p;
-    return (void *)p;
+    auto result = std::stoul(s, 0, 0);
+    static_assert(
+        std::is_same<uintptr_t, decltype(result)>::value, "stoul cannot represent a pointer");
+    return (void *)result;
 }
 
 REGISTER_OP("ValueOperator")
@@ -32,6 +32,7 @@ public:
         std::string handle;
         OP_REQUIRES_OK(context, context->GetAttr("handle", &handle));
         elf_op = (elf::Operator *)stringToPtr(handle);
+        OP_REQUIRES(context, elf_op != nullptr, errors::InvalidArgument("handle cannot be 0"));
     }
 
     void ComputeAsync(OpKernelContext *context, DoneCallback done) override {
@@ -40,7 +41,8 @@ public:
         OP_REQUIRES_OK_ASYNC(context, context->allocate_output(0, tensor.shape(), &output), done);
         auto in = tensor.flat<T>().data();
         auto out = output->flat<T>().data();
-        elf_op->execute_async(in, out, tensor.NumElements(), elf::Communicator::datatype_of<T>(), done);
+        elf_op->execute_async(
+            in, out, tensor.NumElements(), elf::Communicator::datatype_of<T>(), done);
     }
 
 private:
