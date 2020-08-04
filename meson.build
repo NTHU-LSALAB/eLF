@@ -78,7 +78,7 @@ test_core = executable(
     link_with: [elf_core],
 )
 
-test('test_core', test_core, timeout: 10)
+test('test_core', test_core, timeout: 10, suite: 'cpp')
 
 test_nccl = executable(
     'test_nccl',
@@ -87,7 +87,7 @@ test_nccl = executable(
     link_with: [elf_comm_nccl],
 )
 
-test('test_nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'])
+test('test_nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'], suite: 'cpp')
 
 test_workerconf = executable(
     'test_workerconf',
@@ -96,7 +96,7 @@ test_workerconf = executable(
     link_with: [elf_core, elf_comm_nccl],
 )
 
-test('test_workerconf', test_workerconf, timeout: 10, env: ['NCCL_DEBUG=WARN'])
+test('test_workerconf', test_workerconf, timeout: 10, env: ['NCCL_DEBUG=WARN'], suite: 'cpp')
 
 test_worker = executable(
     'test_worker',
@@ -105,7 +105,7 @@ test_worker = executable(
     link_with: [elf_core, elf_comm_nccl],
 )
 
-test('test_worker', test_worker, timeout: 10, env: ['NCCL_DEBUG=WARN'])
+test('test_worker', test_worker, timeout: 10, env: ['NCCL_DEBUG=WARN'], suite: 'cpp')
 
 python_installation.extension_module(
     '_elf',
@@ -118,6 +118,7 @@ test('test_python',
     python_prog,
     args: [files('test_python.py')],
     env: ['PYTHONPATH=' + meson.current_build_dir()],
+    suite: 'python',
 )
 
 shared_library(
@@ -130,6 +131,7 @@ test('test_python_tensorflow',
     python_prog,
     args: [files('test_python_tensorflow.py')],
     workdir: meson.current_build_dir(),
+    suite: 'python',
 )
 
 test('test_python_elf',
@@ -137,4 +139,5 @@ test('test_python_elf',
     args: [files('test_python_elf.py')],
     env: ['PYTHONPATH=' + meson.current_build_dir() + ':' + join_paths(meson.current_source_dir(), 'python')],
     timeout: 10,
+    suite: 'python',
 )
