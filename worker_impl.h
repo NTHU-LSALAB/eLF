@@ -139,6 +139,8 @@ class Worker {
     decltype(confs)::iterator current_conf;
     decltype(confs)::iterator ready_conf;
 
+    absl::Notification first_conf_pushed;
+
 public:
     Worker(Controller *ctrl) : ctrl(ctrl) {
         CUDA_CHECK(cudaGetDevice(&gpu));
@@ -154,8 +156,7 @@ public:
             identifiers.push_back(wv);
         }
 
-        absl::Notification first_conf_pushed;
-        id = ctrl->join(name, [this, &first_conf_pushed](Controller::UpdateData data) {
+        id = ctrl->join(name, [this](Controller::UpdateData data) {
             absl::MutexLock l(&conf_mux);
             confs.emplace_back(gpu, data.conf_id, data.rank, data.size,
                 std::make_shared<ControllerKVSAdapter>(ctrl, data.conf_id), identifiers);
