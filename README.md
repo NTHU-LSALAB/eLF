@@ -5,7 +5,7 @@ Dependencies:
 * [grpc](https://grpc.io/)
 * [catch2](https://github.com/catchorg/Catch2) (for testing)
 
-* Build system:
+Build system:
 
 * [meson](https://mesonbuild.com/)
 * [ninja](https://ninja-build.org/)
