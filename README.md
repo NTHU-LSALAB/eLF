@@ -1,7 +1,7 @@
 Dependencies:
 
 * [abseil-cpp](https://github.com/abseil/abseil-cpp)
-* [protocol buffers](https://developers.google.com/protocol-buffers)
+* [protobuf](https://developers.google.com/protocol-buffers)
 * [grpc](https://grpc.io/)
 * [catch2](https://github.com/catchorg/Catch2) (for testing)
 
