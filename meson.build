@@ -8,6 +8,7 @@ assert(
 
 threads_dep = dependency('threads')
 absl_dep = dependency('absl', method: 'cmake', modules: ['absl::synchronization', 'absl::str_format'])
+test_deps = [dependency('catch2')]
 
 protoc = find_program('protoc')
 grpc_cpp_plugin = find_program('grpc_cpp_plugin')
@@ -31,11 +32,13 @@ grpc_deps = [
     dependency('grpc++'),
 ]
 
-controller = executable(
-    'elfctrl',
-    'controller.cc',
-    dependencies: [threads_dep, absl_dep],
+test_core = executable(
+    'test_core',
+    'test_core.cc', 'controller.cc',
+    dependencies: [test_deps, absl_dep, threads_dep],
 )
+
+test('core', test_core)
 
 worker = executable(
     'worker',

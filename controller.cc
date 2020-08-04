@@ -12,6 +12,7 @@ class LocalController : public Controller {
 public:
     LocalController() : update_thread(&LocalController::update_loop, this) {}
     ~LocalController() override {
+        stop();
         update_thread.join();
     }
 
@@ -168,19 +169,4 @@ private:
 
 std::unique_ptr<Controller> create_controller() {
     return std::make_unique<LocalController>();
-}
-
-int main() {
-    auto c = create_controller();
-    std::cerr << c->join("", [](int64_t conf_id, int64_t rank, int64_t size) {
-        std::cerr << absl::StrFormat("conf_id=%d rank=%d size=%d\n", conf_id, rank, size);
-    }) << "\n";
-    std::cerr << c->join("", [](int64_t conf_id, int64_t rank, int64_t size) {
-        std::cerr << absl::StrFormat("conf_id=%d rank=%d size=%d\n", conf_id, rank, size);
-    }) << "\n";
-    auto one = c->begin_batch(1, 2);
-    auto two = c->begin_batch(2, 2);
-    std::cerr << one.get() << "\n";
-    std::cerr << two.get() << "\n";
-    c->stop();
 }
