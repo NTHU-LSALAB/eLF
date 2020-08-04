@@ -83,8 +83,8 @@ struct TestConcreteController {
 };
 struct TestRemoteController {
     TestRemoteController()
-        : c(create_controller()), ec(export_controller(c.get(), "localhost:")),
-          rc(connect_controller(absl::StrFormat("localhost:%d", ec->listening_port()))) {}
+        : c(create_controller()), ec(export_controller(c.get(), "127.0.0.1:")),
+          rc(connect_controller(absl::StrFormat("127.0.0.1:%d", ec->listening_port()))) {}
     ~TestRemoteController() {
         ec->stop();
     }
