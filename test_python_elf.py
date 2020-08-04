@@ -14,6 +14,9 @@ class ElfTest(unittest.TestCase):
     def test_worker_basic(self):
         worker = elf.Worker('127.0.0.1:{}'.format(self.ctrl.listening_port))
 
+        worker.add_global_variable('gv')
+        worker.add_weight_variable('wv')
+
         worker.commit_and_join()
 
         sg = worker.shard_generator()
