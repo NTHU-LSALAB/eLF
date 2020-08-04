@@ -8,13 +8,13 @@
 #include <vector>
 
 #include <absl/synchronization/mutex.h>
-#include <thread_pool.h>
 
 #include "communicator.h"
 #include "controller.h"
 #include "kvs.h"
 #include "lkvs_impl.h"
 #include "nccl_communicator.h"
+#include "thread_pool_impl.h"
 
 namespace elf {
 
