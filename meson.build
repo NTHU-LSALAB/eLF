@@ -45,9 +45,3 @@ test_core = executable(
 )
 
 test('core', test_core)
-
-shared_library(
-    'shared_library_test_1',
-    'rpc.cc', messages_generated,
-    dependencies: [absl_dep, threads_dep, grpc_deps]
-)

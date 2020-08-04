@@ -53,10 +53,10 @@ public:
         desired_n = n;
         bool status = mux.AwaitWithTimeout(
             absl::Condition(this, &CallbackMock::value_is_ready), absl::FromChrono(wait_time));
-        if (!status) {
-            throw std::runtime_error("callback not called in time");
-        }
         desired_n = 0;
+        if (!status) {
+            return ReturnType{-111, -222, -333};
+        }
         return value;
     }
     std::function<void(ReturnType)> callback() {
@@ -130,6 +130,8 @@ TEMPLATE_TEST_CASE("controller",
 
         int64_t b = c->join("workerB", mockB.callback());
         REQUIRE(a != b); // workers must have different ids
+        REQUIRE(a > 0);
+        REQUIRE(b > 0);
 
         confA = mockA.get(2);
         auto confB = mockB.get(1);
@@ -169,6 +171,7 @@ TEMPLATE_TEST_CASE("controller",
         }
 
         // first worker requests leaving
+        INFO(a << " leaving");
         c->leave(a);
         confB = mockB.get();
         REQUIRE(confB.conf_id == 3);
@@ -216,15 +219,13 @@ TEST_CASE("controller-kv") {
 
     SECTION("get after set") {
         c->kv_set(1, "key", "value");
-        auto fut =
-            std::async(std::launch::async, [&]() -> std::string { return c->kv_get(1, "key"); });
+        auto fut = c->kv_get(1, "key");
         REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);
         REQUIRE(fut.get() == "value");
     }
 
     SECTION("set after get") {
-        auto fut =
-            std::async(std::launch::async, [&]() -> std::string { return c->kv_get(1, "key"); });
+        auto fut = c->kv_get(1, "key");
         REQUIRE(fut.wait_for(wait_time) == std::future_status::timeout);
         c->kv_set(1, "key", "value");
         REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);

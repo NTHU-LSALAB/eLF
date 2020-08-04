@@ -48,7 +48,7 @@ public:
     virtual void kv_set(int64_t conf_id, const std::string &key, const std::string &value) = 0;
 
     // retrieve the value associated with the key
-    virtual std::string kv_get(int64_t conf_id, const std::string &key) = 0;
+    virtual std::shared_future<std::string> kv_get(int64_t conf_id, const std::string &key) = 0;
 
     // stop the controller
     virtual void stop() = 0;

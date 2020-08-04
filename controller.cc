@@ -121,11 +121,9 @@ public:
         kv[conf_id].set(key, value);
     }
 
-    std::string kv_get(int64_t conf_id, const std::string &key) override {
-        absl::ReleasableMutexLock l(&kv_mux);
-        auto future = kv[conf_id].get(key);
-        l.Release();
-        return future.get();
+    std::shared_future<std::string> kv_get(int64_t conf_id, const std::string &key) override {
+        absl::MutexLock l(&kv_mux);
+        return kv[conf_id].get(key);
     }
 
 private:

@@ -1,10 +1,12 @@
 #include <bits/stdint-intn.h>
 #include <chrono>
+#include <future>
 #include <grpcpp/create_channel.h>
 #include <grpcpp/impl/codegen/client_context.h>
 #include <grpcpp/impl/codegen/sync_stream.h>
 #include <grpcpp/security/credentials.h>
 #include <queue>
+#include <unordered_map>
 
 #include <absl/synchronization/mutex.h>
 
@@ -71,11 +73,21 @@ public:
     Join(ServerContext *sctx, const JoinRequest *in, grpc::ServerWriter<Update> *outw) override {
         UpdateReceiver receiver;
         int64_t id = c->join(in->name(), receiver.callback());
-        while (!sctx->IsCancelled()) {
+        {
+            absl::MutexLock l(&aw_mux);
+            active_workers.insert(id);
+        }
+        while (alive() && !sctx->IsCancelled()) {
+            {
+                absl::MutexLock l(&aw_mux);
+                if (active_workers.find(id) == active_workers.end()) {
+                    break;
+                }
+            }
             Controller::UpdateData data;
             auto status = receiver.get(&data);
             if (status == UpdateReceiver::DONE) {
-                break;
+                return Status::OK;
             } else if (status == UpdateReceiver::TIMEOUT) {
                 continue;
             }
@@ -86,11 +98,13 @@ public:
             update.set_size(data.size);
             outw->Write(update);
         }
-        return Status::OK;
+        return Status::CANCELLED;
     }
 
     Status Leave(ServerContext *, const LeaveRequest *in, LeaveResponse *out) override {
         c->leave(in->id());
+        absl::MutexLock l(&aw_mux);
+        active_workers.erase(in->id());
         return Status::OK;
     }
 
@@ -111,14 +125,32 @@ public:
         return Status::OK;
     }
 
-    Status KVGet(ServerContext *, const KVGetRequest *in, KVGetResponse *out) override {
-        auto value = c->kv_get(in->conf_id(), in->key());
-        out->set_value(value);
-        return Status::OK;
+    Status KVGet(ServerContext *sctx, const KVGetRequest *in, KVGetResponse *out) override {
+        auto future = c->kv_get(in->conf_id(), in->key());
+        while (alive() && !sctx->IsCancelled()) {
+            if (future.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
+                out->set_value(future.get());
+                return Status::OK;
+            }
+        }
+        return Status::CANCELLED;
+    }
+
+    void terminate() {
+        absl::MutexLock l(&_terminating_mux);
+        _terminating = true;
     }
 
 private:
     Controller *c;
+    absl::Mutex aw_mux;
+    std::unordered_set<int64_t> active_workers;
+    absl::Mutex _terminating_mux;
+    bool _terminating = false;
+    bool alive() {
+        absl::ReaderMutexLock l(&_terminating_mux);
+        return !_terminating;
+    }
 };
 
 class ExportedControllerImpl : public ExportedController {
@@ -135,6 +167,7 @@ public:
         return selected_port;
     }
     void stop() override {
+        service.terminate();
         server->Shutdown();
         server->Wait();
     }
@@ -150,16 +183,21 @@ public:
     RemoteController(const std::string &address)
         : stub(ControllerRPC::NewStub(
               grpc::CreateChannel(address, grpc::InsecureChannelCredentials()))) {}
-    ~RemoteController() override {}
+    ~RemoteController() override {
+        for (auto& thread: threads) {
+            thread.join();
+        }
+    }
 
     int64_t join(const std::string &name, update_callback_t callback) override {
-        ClientContext cctx;
+        auto cctx = std::make_unique<ClientContext>();
         JoinRequest in;
         in.set_name(name);
-        auto reader = stub->Join(&cctx, in);
+        auto reader = stub->Join(cctx.get(), in);
         Update update;
-        reader->Read(&update);
+        assert(reader->Read(&update));
         callback(Controller::UpdateData{update.conf_id(), update.rank(), update.size()});
+        threads.emplace_back(update_loop, std::move(cctx), std::move(reader), callback);
         return update.id();
     }
 
@@ -167,6 +205,7 @@ public:
         ClientContext cctx;
         LeaveRequest in;
         LeaveResponse out;
+        in.set_id(id);
         check(stub->Leave(&cctx, in, &out));
     }
 
@@ -199,14 +238,16 @@ public:
         check(stub->KVSet(&cctx, in, &out));
     }
 
-    std::string kv_get(int64_t conf_id, const std::string &key) override {
-        ClientContext cctx;
-        KVGetRequest in;
-        KVGetResponse out;
-        in.set_conf_id(conf_id);
-        in.set_key(key);
-        check(stub->KVGet(&cctx, in, &out));
-        return out.value();
+    std::shared_future<std::string> kv_get(int64_t conf_id, const std::string &key) override {
+        return std::async(std::launch::async, [conf_id, key, this]() -> std::string {
+            ClientContext cctx;
+            KVGetRequest in;
+            KVGetResponse out;
+            in.set_conf_id(conf_id);
+            in.set_key(key);
+            check(stub->KVGet(&cctx, in, &out));
+            return out.value();
+        });
     }
 
     void stop() override {
@@ -214,7 +255,8 @@ public:
     }
 
 private:
-    void update_loop(std::unique_ptr<grpc::ClientReader<Update>> reader,
+    static void update_loop(std::unique_ptr<ClientContext>,
+        std::unique_ptr<grpc::ClientReader<Update>> reader,
         update_callback_t callback) {
         Update update;
         while (reader->Read(&update)) {
