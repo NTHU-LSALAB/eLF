@@ -40,6 +40,12 @@ grpc_deps = [
     dependency('grpc++'),
 ]
 
+pymod = import('python')
+python_installation = pymod.find_installation('python3')
+python_prog = find_program(python_installation.path())
+pybind11_proj = subproject('pybind11')
+pybind11_dep = pybind11_proj.get_variable('pybind11_dep')
+
 test_core = executable(
     'test_core',
     'test_main.cc', 'test_core.cc', 'controller.cc', 'rpc.cc', messages_generated,
@@ -63,3 +69,15 @@ test_worker = executable(
 )
 
 test('test_worker', test_worker, timeout: 10, env: ['NCCL_DEBUG=WARN'])
+
+python_installation.extension_module(
+    '_elf',
+    'python/_elf.cc', 'controller.cc', 'rpc.cc', messages_generated,
+    dependencies: [pybind11_dep, absl_dep, threads_dep, grpc_deps],
+)
+
+test('test_python',
+    python_prog,
+    args: [files('test_python.py')],
+    env: ['PYTHONPATH=' + meson.current_build_dir()]
+)
