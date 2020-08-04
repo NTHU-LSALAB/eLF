@@ -68,6 +68,7 @@ public:
         size_t count,
         Communicator::DataType type,
         std::function<void()> done_callback) {
+        assert(ready());
         pool.Schedule([=]() {
             CUDA_CHECK(cudaSetDevice(gpu));
             assert(communicators.at(identifier));
@@ -83,6 +84,7 @@ public:
         size_t count,
         Communicator::DataType type,
         std::function<void()> done_callback) {
+        assert(ready());
         pool.Schedule([=]() {
             CUDA_CHECK(cudaSetDevice(gpu));
             assert(communicators.at(identifier));
