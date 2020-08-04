@@ -40,8 +40,8 @@ message EndBatchResponse {}
 
 message KVSetRequest {
   int64 conf_id = 1;
-  string key = 2;
-  string value = 3;
+  bytes key = 2;
+  bytes value = 3;
 }
 
 message KVSetResponse {}
