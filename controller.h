@@ -51,6 +51,8 @@ public:
     // only used for profiling
     virtual void end_batch(int64_t id) = 0;
 
+    virtual int64_t get_shard() = 0;
+
     // set the value associated with the key
     virtual void kv_set(int64_t conf_id, const std::string &key, const std::string &value) = 0;
 

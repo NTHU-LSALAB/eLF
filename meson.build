@@ -65,7 +65,7 @@ tf_dep = declare_dependency(
 elf_core = shared_library(
     'elf_core',
     'controller.cc', 'rpc.cc', messages_generated,
-    dependencies: [absl_dep, grpc_deps, threads_dep],
+    dependencies: [absl_dep, grpc_deps, threads_dep, pcg_cpp_dep],
 )
 
 elf_comm_nccl = shared_library(

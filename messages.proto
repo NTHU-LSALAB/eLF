@@ -7,6 +7,7 @@ service ControllerRPC {
   rpc Leave(LeaveRequest) returns (LeaveResponse) {}
   rpc BeginBatch(BeginBatchRequest) returns (BeginBatchResponse) {}
   rpc EndBatch(EndBatchRequest) returns (EndBatchResponse) {}
+  rpc GetShard(GetShardRequest) returns (GetShardResponse) {}
   rpc KVSet(KVSetRequest) returns (KVSetResponse) {}
   rpc KVGet(KVGetRequest) returns (KVGetResponse) {}
 }
@@ -37,6 +38,12 @@ message BeginBatchResponse {
 message EndBatchRequest { int64 id = 1; }
 
 message EndBatchResponse {}
+
+message GetShardRequest {}
+
+message GetShardResponse {
+  int64 shard = 1;
+}
 
 message KVSetRequest {
   int64 conf_id = 1;

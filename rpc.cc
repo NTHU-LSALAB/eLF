@@ -127,6 +127,11 @@ public:
         return Status::OK;
     }
 
+    Status GetShard(ServerContext *, const GetShardRequest* in, GetShardResponse* out) override {
+        out->set_shard(c->get_shard());
+        return Status::OK;
+    }
+
     Status KVSet(ServerContext *, const KVSetRequest *in, KVSetResponse *out) override {
         c->kv_set(in->conf_id(), in->key(), in->value());
         return Status::OK;
@@ -239,6 +244,14 @@ public:
         EndBatchRequest in;
         EndBatchResponse out;
         check(stub->EndBatch(&cctx, in, &out));
+    }
+
+    int64_t get_shard() override {
+        ClientContext cctx;
+        GetShardRequest in;
+        GetShardResponse out;
+        check(stub->GetShard(&cctx, in, &out));
+        return out.shard();
     }
 
     void kv_set(int64_t conf_id, const std::string &key, const std::string &value) override {

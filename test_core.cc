@@ -4,6 +4,7 @@
 #include <future>
 #include <iostream>
 #include <queue>
+#include <set>
 #include <stdexcept>
 
 #include <absl/strings/str_format.h>
@@ -415,6 +416,24 @@ TEMPLATE_TEST_CASE("controller-kv",
         c->kv_set(1, "key", "value");
         REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);
         REQUIRE(fut.get() == "value");
+    }
+}
+
+TEMPLATE_TEST_CASE("controller-shard",
+    "[controller][shard][rpc]",
+    TestConcreteController,
+    TestRemoteController) {
+
+    TestType helper;
+    elf::Controller *c = helper.controller();
+
+    std::set<int64_t> seen;
+    for (int i = 0; i < 1000; i++) {
+        int64_t x = c->get_shard();
+        CAPTURE(i, x, seen);
+        CHECK(seen.find(x) == seen.end());
+        CHECK(x < i + 128);
+        seen.insert(x);
     }
 }
 

@@ -9,12 +9,13 @@
 
 #include "controller.h"
 #include "lkvs_impl.h"
+#include "shard_generator_impl.h"
 
 namespace elf {
 
 class ConcreteController : public Controller {
 public:
-    ConcreteController() : update_thread(&ConcreteController::update_loop, this) {}
+    ConcreteController() : update_thread(&ConcreteController::update_loop, this), sg(128) {}
     ~ConcreteController() override {
         stop();
         update_thread.join();
@@ -103,6 +104,10 @@ public:
         conf_id = -1;
     }
 
+    int64_t get_shard() override {
+        return sg.next();
+    }
+
     void kv_set(int64_t conf_id, const std::string &key, const std::string &value) override {
         absl::MutexLock l(&kv_mux);
         kv[conf_id].set(key, value);
@@ -134,6 +139,7 @@ private:
     std::thread update_thread;
     absl::Mutex kv_mux;
     std::unordered_map<int64_t, LocalKeyValueStore> kv;
+    ShardGenerator sg;
 
     struct ConfState {
         int64_t conf_id;
