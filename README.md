@@ -21,7 +21,7 @@ Build instructions:
     It is recommended that you use `clang++` as the compiler and `lld` as the linker. To do so, use the following command instead:
 
     ```
-    CXX=clang++ CXX_LD=ldd meson build
+    CXX=clang++ CXX_LD=lld meson build
     ```
 
 2.  Build eLF:
