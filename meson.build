@@ -110,7 +110,7 @@ test('test_worker', test_worker, timeout: 10, env: ['NCCL_DEBUG=WARN'])
 python_installation.extension_module(
     '_elf',
     'python/_elf.cc',
-    dependencies: [pybind11_dep],
+    dependencies: [pybind11_dep, absl_dep, threads_dep, nccl_deps],
     link_with: [elf_core],
 )
 

@@ -36,4 +36,5 @@
 compile_commands.json
 /build
 /subprojects/*/
+!/subprojects/packagefiles/
 /env
