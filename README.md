@@ -1,24 +1,22 @@
-Dependencies:
+Prerequisites:
 
+* [clang](https://clang.llvm.org/)
 * [protobuf](https://developers.google.com/protocol-buffers)
 * [grpc](https://grpc.io/)
-
-Build system:
-
-* [meson](https://mesonbuild.com/)
 * [ninja](https://ninja-build.org/)
+* [meson](https://mesonbuild.com/) >= 0.55
 
 Build instructions:
 
 1.  Configure the build:
 
     ```
-    meson build
+    CXX=clang++ meson build
     ```
 
     This command configures the build in a directory named `build`.
 
-    It is recommended that you use `clang++` as the compiler and `lld` as the linker. To do so, use the following command instead:
+    It is recommended that you use `lld` as the linker. To do so, use the following command instead:
 
     ```
     CXX=clang++ CXX_LD=lld meson build
