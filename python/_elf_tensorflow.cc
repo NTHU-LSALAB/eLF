@@ -38,8 +38,8 @@ public:
         auto tensor = context->input(0);
         Tensor *output;
         OP_REQUIRES_OK_ASYNC(context, context->allocate_output(0, tensor.shape(), &output), done);
-        auto in = tensor.tensor_data().data();
-        auto out = output->tensor_data().data();
+        auto in = tensor.flat<T>().data();
+        auto out = output->flat<T>().data();
         elf_op->execute_async(in, out, tensor.NumElements(), elf::Communicator::datatype_of<T>(), done);
     }
 
