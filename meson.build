@@ -1,4 +1,4 @@
-project('eLF', 'cpp', default_options: ['cpp_std=c++14'])
+project('eLF', 'cpp', version: '0.0', default_options: ['cpp_std=c++14'])
 
 clang = meson.get_compiler('cpp')
 assert(
