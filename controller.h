@@ -3,22 +3,15 @@
 #include <functional>
 #include <future>
 #include <memory>
-#include <stdexcept>
 #include <string>
-#include <thread>
-#include <unordered_map>
-
-#include <iostream>
-
-#include <absl/synchronization/mutex.h>
 
 class Controller {
+protected:
+    Controller() {}
+
 public:
-    Controller() : update_thread(&Controller::update_loop, this) {}
     Controller(const Controller &) = delete;
-    ~Controller() {
-        update_thread.join();
-    }
+    virtual ~Controller() {}
 
     // the callback for worker pool configuration updates
     // conf_id: serial number of the configuration
@@ -30,105 +23,30 @@ public:
     // name: the name of the worker
     // callback: the callback function for updates
     // returns the id of the worker; the id is used in other methods of the controller
-    int64_t join(const std::string &name, update_callback_t callback);
+    virtual int64_t join(const std::string &name, update_callback_t callback) = 0;
 
     // make worker with the supplied id gracefully leave the worker pool
-    void leave(int64_t id);
+    virtual void leave(int64_t id) = 0;
 
     // start a training batch
     // id: worker identifier
     // ready_conf_id: the configuration that the worker is ready for
     // returns the configuration id to use in this batch
     // -1 is returned if training should be stopped
-    std::future<int64_t> begin_batch(int64_t id, int64_t ready_conf_id);
+    virtual std::future<int64_t> begin_batch(int64_t id, int64_t ready_conf_id) = 0;
 
     // indicate that the batch is finished
     // only used for profiling
-    void end_batch(int64_t id);
+    virtual void end_batch(int64_t id) = 0;
 
     // set the value associated with the key
-    void kv_set(int64_t conf_id, const std::string &key, const std::string &value);
+    virtual void kv_set(int64_t conf_id, const std::string &key, const std::string &value) = 0;
 
     // retrieve the value associated with the key
-    std::string kv_get(int64_t conf_id, const std::string &key);
+    virtual std::string kv_get(int64_t conf_id, const std::string &key) = 0;
 
     // stop the controller
-    void stop() {
-        {
-            absl::MutexLock l(&worker_mux);
-            conf_id = -1;
-        }
-    }
-
-private:
-    int64_t conf_id = 0;
-    int64_t processed_conf_id = 0;
-    int64_t worker_counter = 0;
-    struct WorkerHandle {
-        int64_t id;
-        std::string name;
-        update_callback_t callback;
-        WorkerHandle(int64_t id, const std::string &name, update_callback_t callback)
-            : id(id), name(name), callback(callback) {}
-    };
-    absl::Mutex worker_mux;
-    std::unordered_map<int64_t, std::unique_ptr<WorkerHandle>> workers;
-    absl::Mutex waiter_mux;
-    std::unordered_map<int64_t, std::promise<int64_t>> waiters;
-    struct ConfState {
-        int64_t conf_id;
-        int64_t ready_count = 0;
-        std::unordered_map<int64_t, bool> workers;
-        ConfState(int64_t conf_id, const typeof(Controller::workers) &wmap) : conf_id(conf_id) {
-            for (auto &w : wmap) {
-                workers[w.first] = false;
-            }
-        }
-        void clear() {
-            for (auto &worker : workers) {
-                worker.second = false;
-            }
-            ready_count = 0;
-        }
-        bool set_ready(int64_t id) {
-            auto it = workers.find(id);
-            if (it == workers.end()) {
-                return false;
-            }
-            if (it->second == true) {
-                return false;
-            }
-            it->second = true;
-            ready_count++;
-            return ready_count == workers.size();
-        }
-    };
-    std::deque<ConfState> conf_states;
-
-    void check() {
-        if (conf_id == -1) {
-            throw std::runtime_error("The controller is stopping and connot accept new requests");
-        }
-    }
-
-    // commit changes
-    void commit() {
-        conf_id++;
-        conf_states.emplace_front(conf_id, workers);
-    }
-
-    std::thread update_thread;
-    void update_loop() {
-        while (true) {
-            absl::MutexLock l(&worker_mux);
-            worker_mux.Await(absl::Condition(
-                +[](Controller *c) -> bool { return c->conf_id != c->processed_conf_id; }, this));
-            processed_conf_id = conf_id;
-            if (conf_id == -1) {
-                break;
-            }
-            broadcast_updates();
-        }
-    }
-    void broadcast_updates();
+    virtual void stop() = 0;
 };
+
+std::unique_ptr<Controller> create_controller();
