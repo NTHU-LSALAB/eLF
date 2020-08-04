@@ -54,4 +54,4 @@ test_nccl = executable(
     dependencies: [test_deps, absl_dep, threads_dep, nccl_deps, openmp_dep],
 )
 
-test('nccl', test_nccl, timeout: 10)
+test('nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'])

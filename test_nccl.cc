@@ -1,5 +1,6 @@
 #include <catch2/catch.hpp>
 
+#include <algorithm>
 #include <absl/strings/str_format.h>
 #include <cuda_runtime.h>
 #include <omp.h>
@@ -27,13 +28,11 @@ TEMPLATE_TEST_CASE("nccl communicator",
     uint64_t,
     float,
     double) {
-    {
         int device_count;
         CUDA_ASSERT(cudaGetDeviceCount(&device_count));
         if (device_count < 2) {
-            FAIL("need at least 2 CUDA devices to run this test");
+            WARN("Less than 2 CUDA devices. This test may fail.");
         }
-    }
 
     LocalKeyValueStore lkvs;
 
@@ -42,7 +41,7 @@ TEMPLATE_TEST_CASE("nccl communicator",
 
 #pragma omp parallel num_threads(2)
     {
-        CUDA_ASSERT(cudaSetDevice(omp_get_thread_num()));
+        CUDA_ASSERT(cudaSetDevice(std::min(omp_get_thread_num(), device_count-1)));
         auto comm = create_nccl_communicator(&lkvs, "var1", omp_get_thread_num(), 2);
 
         thrust::host_vector<TestType> H(4);
