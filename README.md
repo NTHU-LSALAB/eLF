@@ -8,6 +8,7 @@ Please have these installed before proceeding
 * [ninja](https://ninja-build.org/)
 * [meson](https://mesonbuild.com/) >= 0.55
 * [TensorFlow](https://www.tensorflow.org/) < 2
+* CUDA, [NCCL](https://developer.nvidia.com/nccl)
 
 ## Build instructions
 
