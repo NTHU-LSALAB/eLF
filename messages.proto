@@ -1,24 +1,49 @@
 syntax = "proto3";
 
 service Controller {
-    rpc Join(JoinRequest) returns (JoinReply) {}
-    rpc Updates(UpdatesRequest) returns (stream UpdatesReply) {}
+  rpc Join(JoinRequest) returns (stream Updates) {}
+  rpc Leave(LeaveRequest) returns (LeaveResponse) {}
+  rpc BeginBatch(BeginBatchRequest) returns (BeginBatchResponse) {}
+  rpc EndBatch(EndBatchRequest) returns (EndBatchResponse) {}
+  rpc KVSet(KVSetRequest) returns (KVSetResponse) {}
+  rpc KVGet(KVGetRequest) returns (KVGetResponse) {}
 }
 
-message JoinRequest {
-    string name = 1;
+message JoinRequest { string name = 1; }
+
+message Updates {
+  int64 id = 1;
+  int64 conf_id = 2;
+  int64 rank = 3;
+  int64 size = 4;
 }
 
-message JoinReply {
-    string name = 1;
+message LeaveRequest { int64 id = 1; }
+
+message LeaveResponse {}
+
+message BeginBatchRequest {
+  int64 id = 1;
+  int64 ready_conf_id = 2;
 }
 
-message UpdatesRequest {
-    string id = 1;
+message BeginBatchResponse { int64 conf_id = 1; }
+
+message EndBatchRequest { int64 id = 1; }
+
+message EndBatchResponse {}
+
+message KVSetRequest {
+  int64 conf_id = 1;
+  string key = 2;
+  string value = 3;
 }
 
-message UpdatesReply {
-    int64 conf_id = 1;
-    int64 rank = 2;
-    int64 size = 3;
+message KVSetResponse {}
+
+message KVGetRequest {
+  int64 conf_id = 1;
+  string key = 2;
 }
+
+message KVGetResponse { string value = 1; }

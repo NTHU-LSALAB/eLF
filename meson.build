@@ -39,10 +39,3 @@ test_core = executable(
 )
 
 test('core', test_core)
-
-worker = executable(
-    'worker',
-    'worker.cc',
-    messages_generated,
-    dependencies: [grpc_deps],
-)
