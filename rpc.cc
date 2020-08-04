@@ -1,4 +1,5 @@
 #include <bits/stdint-intn.h>
+#include <chrono>
 #include <grpcpp/create_channel.h>
 #include <grpcpp/impl/codegen/client_context.h>
 #include <grpcpp/impl/codegen/sync_stream.h>
@@ -15,6 +16,7 @@
 #include <grpcpp/server_builder.h>
 #include <stdexcept>
 
+#include "absl/time/time.h"
 #include "controller.h"
 #include "messages.grpc.pb.h"
 #include "messages.pb.h"
@@ -32,6 +34,11 @@ class UpdateReceiver {
     }
 
 public:
+    enum Status {
+        DONE,
+        TIMEOUT,
+        ITEM,
+    };
     Controller::update_callback_t callback() {
         return [this](Controller::UpdateData data) {
             absl::MutexLock l(&mux);
@@ -42,28 +49,35 @@ public:
         absl::MutexLock l(&mux);
         done = true;
     }
-    bool get(Controller::UpdateData *data) {
+    Status get(Controller::UpdateData *data) {
         absl::MutexLock l(&mux);
-        mux.Await(absl::Condition(this, &UpdateReceiver::cond));
+        if (!mux.AwaitWithTimeout(
+                absl::Condition(this, &UpdateReceiver::cond), absl::Milliseconds(100))) {
+            return TIMEOUT;
+        }
         if (done) {
-            return false;
+            return DONE;
         }
         *data = q.front();
         q.pop();
-        return true;
+        return ITEM;
     }
 };
 
 class ControllerServiceImpl final : public ControllerRPC::Service {
 public:
     explicit ControllerServiceImpl(Controller *c) : c(c) {}
-    Status Join(ServerContext *, const JoinRequest *in, grpc::ServerWriter<Update> *outw) override {
+    Status
+    Join(ServerContext *sctx, const JoinRequest *in, grpc::ServerWriter<Update> *outw) override {
         UpdateReceiver receiver;
         int64_t id = c->join(in->name(), receiver.callback());
-        while (true) {
+        while (!sctx->IsCancelled()) {
             Controller::UpdateData data;
-            if (!receiver.get(&data)) {
+            auto status = receiver.get(&data);
+            if (status == UpdateReceiver::DONE) {
                 break;
+            } else if (status == UpdateReceiver::TIMEOUT) {
+                continue;
             }
             Update update;
             update.set_id(id);
