@@ -12,6 +12,7 @@ class BindingTest(unittest.TestCase):
     def test_export_controller(self):
         ctrl = _elf.create_controller()
         ectrl = _elf.export_controller(ctrl, '127.0.0.1:')
+        cctrl = _elf.connect_controller('127.0.0.1:{}'.format(ectrl.listening_port()))
 
     def test_worker(self):
         ctrl = _elf.create_controller()
