@@ -64,7 +64,6 @@ TEST_CASE("workerconf 2 workers") {
             absl::Notification done;
             wc.schedule_broadcast(
                 "var1", Dsrc.data(), Ddst.data(), 4, elf::Communicator::i32, [&]() {
-                    std::cerr << "thread 1 broadcast done\n";
                     done.Notify();
                 });
             done.WaitForNotification();
@@ -80,7 +79,6 @@ TEST_CASE("workerconf 2 workers") {
             absl::Notification done;
             wc.schedule_allreduce(
                 "var2", Dsrc.data(), Ddst.data(), 4, elf::Communicator::i32, [&]() {
-                    std::cerr << "thread 1 allreduce done\n";
                     done.Notify();
                 });
             done.WaitForNotification();
@@ -106,7 +104,6 @@ TEST_CASE("workerconf 2 workers") {
             absl::Notification done;
             wc.schedule_broadcast(
                 "var1", Dsrc.data(), Ddst.data(), 4, elf::Communicator::i32, [&]() {
-                    std::cerr << "thread 2 broadcast done\n";
                     done.Notify();
                 });
             done.WaitForNotification();
@@ -122,7 +119,6 @@ TEST_CASE("workerconf 2 workers") {
             absl::Notification done;
             wc.schedule_allreduce(
                 "var2", Dsrc.data(), Ddst.data(), 4, elf::Communicator::i32, [&]() {
-                    std::cerr << "thread 2 allreduce done\n";
                     done.Notify();
                 });
             done.WaitForNotification();

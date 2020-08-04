@@ -68,7 +68,7 @@ public:
         Communicator::DataType type,
         std::function<void()> done_callback) {
         pool.Schedule([=]() {
-            CUDA_ASSERT(cudaSetDevice(gpu));
+            CUDA_CHECK(cudaSetDevice(gpu));
             assert(communicators.at(identifier));
             communicators.at(identifier)->allreduce(in, out, count, type);
             done_callback();
@@ -83,7 +83,7 @@ public:
         Communicator::DataType type,
         std::function<void()> done_callback) {
         pool.Schedule([=]() {
-            CUDA_ASSERT(cudaSetDevice(gpu));
+            CUDA_CHECK(cudaSetDevice(gpu));
             assert(communicators.at(identifier));
             communicators.at(identifier)->broadcast(in, out, 0, count, type);
             done_callback();
@@ -93,7 +93,7 @@ public:
 
 private:
     void create_communicator_for_variable(std::string variable) {
-        CUDA_ASSERT(cudaSetDevice(gpu));
+        CUDA_CHECK(cudaSetDevice(gpu));
         auto comm = create_nccl_communicator(kvs.get(), variable, rank, size);
         {
             absl::MutexLock l(&comms_mux);
@@ -105,9 +105,7 @@ private:
         }
     }
 
-    void teardown_communicators() {
-
-    }
+    void teardown_communicators() {}
 };
 
 class ControllerKVSAdapter : public KeyValueStore {
@@ -135,7 +133,6 @@ class Worker {
 
     std::list<WorkerConf> confs;
     absl::Mutex conf_mux;
-    bool first_conf_pushed = false;
 
     std::vector<std::string> identifiers;
 
@@ -144,12 +141,12 @@ class Worker {
 
 public:
     Worker(Controller *ctrl) : ctrl(ctrl) {
-        CUDA_ASSERT(cudaGetDevice(&gpu));
+        CUDA_CHECK(cudaGetDevice(&gpu));
     }
     Worker(const Worker &) = delete;
     ~Worker() {}
 
-    void join(const std::string &name = "") {
+    void commit_and_join(const std::string &name = "") {
         for (auto &gv : global_variables) {
             identifiers.push_back(gv);
         }
@@ -157,15 +154,17 @@ public:
             identifiers.push_back(wv);
         }
 
-        id = ctrl->join(name, [this](Controller::UpdateData data) {
+        absl::Notification first_conf_pushed;
+        id = ctrl->join(name, [this, &first_conf_pushed](Controller::UpdateData data) {
             absl::MutexLock l(&conf_mux);
             confs.emplace_back(gpu, data.conf_id, data.rank, data.size,
                 std::make_shared<ControllerKVSAdapter>(ctrl, data.conf_id), identifiers);
-            first_conf_pushed = true;
+            if (!first_conf_pushed.HasBeenNotified()) {
+                first_conf_pushed.Notify();
+            }
         });
         {
-            absl::ReaderMutexLock l(&conf_mux);
-            conf_mux.Await(absl::Condition(&first_conf_pushed));
+            first_conf_pushed.WaitForNotification();
             confs.front().wait_ready();
             ready_conf = confs.begin();
             current_conf = confs.begin();
@@ -223,19 +222,21 @@ public:
     }
 
     std::tuple<bool, int64_t> begin_batch() {
-        absl::MutexLock l(&conf_mux);
-        for (auto next = ready_conf; next != confs.end(); ++next) {
-            if (next->ready()) {
-                ready_conf = next;
-            } else {
-                break;
+        {
+            absl::MutexLock l(&conf_mux);
+            for (auto next = ready_conf; next != confs.end(); ++next) {
+                if (next->ready()) {
+                    ready_conf = next;
+                } else {
+                    break;
+                }
             }
         }
         int64_t batch_conf_id = ctrl->begin_batch(id, ready_conf->id).get();
         while (current_conf->id != batch_conf_id) {
             current_conf++;
         }
-        // todo: gc
+        // TODO: gc
         return std::make_tuple(false, 0);
     }
 };

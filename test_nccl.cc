@@ -22,7 +22,7 @@ TEMPLATE_TEST_CASE("nccl communicator",
     float,
     double) {
     int device_count;
-    CUDA_ASSERT(cudaGetDeviceCount(&device_count));
+    CUDA_CHECK(cudaGetDeviceCount(&device_count));
     if (device_count < 2) {
         WARN("Less than 2 CUDA devices. This test may fail.");
     }
@@ -34,7 +34,7 @@ TEMPLATE_TEST_CASE("nccl communicator",
 
 #pragma omp parallel num_threads(2)
     {
-        CUDA_ASSERT(cudaSetDevice(std::min(omp_get_thread_num(), device_count - 1)));
+        CUDA_CHECK(cudaSetDevice(std::min(omp_get_thread_num(), device_count - 1)));
         auto comm = create_nccl_communicator(&lkvs, "var1", omp_get_thread_num(), 2);
 
         std::array<TestType, 4> H;
