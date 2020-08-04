@@ -38,3 +38,4 @@ compile_commands.json
 /subprojects/*/
 !/subprojects/packagefiles/
 /env
+__pycache__/
