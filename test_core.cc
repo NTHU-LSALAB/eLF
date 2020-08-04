@@ -415,3 +415,5 @@ TEMPLATE_TEST_CASE("controller-kv",
         REQUIRE(fut.get() == "value");
     }
 }
+
+// TODO: test controller allows leave to be called multiple times without breaking

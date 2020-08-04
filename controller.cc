@@ -37,9 +37,11 @@ public:
     void leave(int64_t id) override {
         absl::MutexLock l(&worker_mux);
         check();
-        active_workers--;
-        workers[id]->leave_at = conf_id + 1;
-        commit();
+        if (workers[id]->leave_at == std::numeric_limits<int64_t>::max()) {
+            active_workers--;
+            workers[id]->leave_at = conf_id + 1;
+            commit();
+        }
     }
 
     std::future<BeginBatchResult> begin_batch(int64_t id, int64_t ready_conf_id) override {
