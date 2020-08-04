@@ -23,8 +23,11 @@ class CallbackMock {
     }
 
 public:
-    ReturnType get(int64_t n) {
+    ReturnType get(int64_t n = -1) {
         absl::MutexLock l(&mux);
+        if (n == -1) {
+            n = n_calls + 1;
+        }
         assert(desired_n == 0);
         desired_n = n;
         mux.AwaitWithTimeout(
@@ -113,5 +116,35 @@ TEST_CASE("controller") {
             REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
             REQUIRE(2 == futB.get());
         }
+
+        // first worker leaves
+        c->leave(a);
+        confB = mockB.get();
+        REQUIRE(confB.conf_id == 3);
+        REQUIRE(confB.rank == 0);
+        REQUIRE(confB.size == 1);
+
+        for (int i = 0; i < 3; i++) {
+            // new configuration is not ready
+            // worker A continues training
+            auto futB = c->begin_batch(b, 2);
+            auto futA = c->begin_batch(a, 2);
+            REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(2 == futA.get());
+            REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(2 == futB.get());
+        }
+
+        for (int i = 0; i < 3; i++) {
+            // new configuration is ready, so use new configuration
+            auto futB = c->begin_batch(b, 3);
+            REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(3 == futB.get());
+        }
+
+        // allow A to leave
+        auto futA = c->begin_batch(a, 2);
+        REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
+        REQUIRE(0 == futA.get());
     }
 }
