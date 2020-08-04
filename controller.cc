@@ -49,7 +49,7 @@ public:
             auto conf_state = conf_states.begin();
             for (; conf_state != conf_states.end(); conf_state++) {
                 if (conf_state->conf_id > ready_conf_id) {
-                    break;
+                    continue;
                 }
                 if (conf_state->set_ready(id)) {
                     int64_t conf_id = conf_state->conf_id;
@@ -109,7 +109,6 @@ private:
             ready_count = 0;
         }
         bool set_ready(int64_t id) {
-            std::cerr << absl::StrFormat("cfid %d wid %d\n", conf_id, id);
             auto it = workers.find(id);
             if (it == workers.end()) {
                 return false;

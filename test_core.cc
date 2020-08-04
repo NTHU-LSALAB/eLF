@@ -27,8 +27,8 @@ public:
         absl::MutexLock l(&mux);
         assert(desired_n == 0);
         desired_n = n;
-        mux.AwaitWithTimeout(absl::Condition(this, &CallbackMock::value_is_ready),
-            absl::FromChrono(wait_time));
+        mux.AwaitWithTimeout(
+            absl::Condition(this, &CallbackMock::value_is_ready), absl::FromChrono(wait_time));
         desired_n = 0;
         return value;
     }
@@ -58,9 +58,11 @@ TEST_CASE("controller") {
         REQUIRE(update.size == 1);
 
         // begin a batch alone
-        auto fut = c->begin_batch(1, 1);
-        REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);
-        REQUIRE(fut.get() == 1);
+        for (int i = 0; i < 3; i++) {
+            auto fut = c->begin_batch(1, 1);
+            REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(fut.get() == 1);
+        }
     }
 
     SECTION("two workers") {
@@ -83,27 +85,33 @@ TEST_CASE("controller") {
         REQUIRE(confA.size == 2);
         REQUIRE(confB.size == 2);
 
-        // worker A is ready, but worker B is not
-        // lets make sure that worker A can proceed with the old configuration
-        auto futA = c->begin_batch(a, 1);
-        REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-        int64_t conf_id = futA.get();
-        REQUIRE(conf_id == 1);
+        for (int i = 0; i < 3; i++) {
+            // worker A is ready, but worker B is not
+            // lets make sure that worker A can proceed with the old configuration
+            auto futA = c->begin_batch(a, 1);
+            REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
+            int64_t conf_id = futA.get();
+            REQUIRE(conf_id == 1);
+        }
 
-        // now that A is ready for the new configuration, but B is still not
-        // the old configuration should still be used
-        futA = c->begin_batch(a, 2);
-        REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-        conf_id = futA.get();
-        REQUIRE(conf_id == 1);
+        for (int i = 0; i < 3; i++) {
+            // now that A is ready for the new configuration, but B is still not
+            // the old configuration should still be used
+            auto futA = c->begin_batch(a, 2);
+            REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
+            auto conf_id = futA.get();
+            REQUIRE(conf_id == 1);
+        }
 
-        // both of them are ready now
-        // the new configuration should be used
-        auto futB = c->begin_batch(b, 2);
-        futA = c->begin_batch(a, 2);
-        REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-        REQUIRE(2 == futA.get());
-        REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
-        REQUIRE(2 == futB.get());
+        for (int i = 0; i < 3; i++) {
+            // both of them are ready now
+            // the new configuration should be used
+            auto futB = c->begin_batch(b, 2);
+            auto futA = c->begin_batch(a, 2);
+            REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(2 == futA.get());
+            REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(2 == futB.get());
+        }
     }
 }
