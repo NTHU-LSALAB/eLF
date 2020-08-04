@@ -3,7 +3,7 @@
 
 using namespace tensorflow;
 
-REGISTER_OP("ZeroOut")
+REGISTER_OP("Allreduce")
     .Input("to_zero: int32")
     .Output("zeroed: int32")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext *c) {
@@ -11,9 +11,9 @@ REGISTER_OP("ZeroOut")
         return Status::OK();
     });
 
-class ZeroOutOp : public OpKernel {
+class AllreduceOp : public OpKernel {
 public:
-    explicit ZeroOutOp(OpKernelConstruction *context) : OpKernel(context) {}
+    explicit AllreduceOp(OpKernelConstruction *context) : OpKernel(context) {}
 
     void Compute(OpKernelContext *context) override {
         // Grab the input tensor
@@ -37,4 +37,4 @@ public:
     }
 };
 
-REGISTER_KERNEL_BUILDER(Name("ZeroOut").Device(DEVICE_GPU), ZeroOutOp);
+REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU), AllreduceOp);
