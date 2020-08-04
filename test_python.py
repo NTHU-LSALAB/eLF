@@ -18,13 +18,14 @@ class BindingTest(unittest.TestCase):
         ctrl = _elf.create_controller()
         worker = _elf.Worker(ctrl)
 
-        allreduce = worker.add_global_variable('var1')
+        broadcast = worker.add_global_variable('var1')
         allreduce = worker.add_weight_variable('var1')
 
         worker.commit_and_join()
 
         self.assertEqual(worker.begin_batch()[:2], (True, False))
-
+        self.assertEqual(broadcast.get_handle()[:2], '0x')
+        self.assertEqual(allreduce.get_handle()[:2], '0x')
 
 
 if __name__ == '__main__':

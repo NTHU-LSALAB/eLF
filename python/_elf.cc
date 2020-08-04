@@ -1,3 +1,4 @@
+#include <absl/strings/str_format.h>
 #include <pybind11/pybind11.h>
 
 #include "controller.h"
@@ -27,5 +28,7 @@ PYBIND11_MODULE(_elf, m) {
         .def("add_weight_variable", &elf::Worker::add_weight_variable)
         .def("begin_batch", &elf::Worker::begin_batch);
 
-    py::class_<elf::Operator>(m, "Operator");
+    py::class_<elf::Operator>(m, "Operator")
+        .def("get_handle",
+            [](elf::Operator *op) -> std::string { return absl::StrFormat("%p", op); });
 }
