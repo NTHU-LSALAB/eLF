@@ -183,3 +183,24 @@ TEST_CASE("controller") {
         }
     }
 }
+
+TEST_CASE("controller-kv") {
+    auto c = create_controller();
+
+    SECTION("get after set") {
+        c->kv_set(1, "key", "value");
+        auto fut =
+            std::async(std::launch::async, [&]() -> std::string { return c->kv_get(1, "key"); });
+        REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);
+        REQUIRE(fut.get() == "value");
+    }
+
+    SECTION("set after get") {
+        auto fut =
+            std::async(std::launch::async, [&]() -> std::string { return c->kv_get(1, "key"); });
+        REQUIRE(fut.wait_for(wait_time) == std::future_status::timeout);
+        c->kv_set(1, "key", "value");
+        REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);
+        REQUIRE(fut.get() == "value");
+    }
+}

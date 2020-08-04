@@ -38,3 +38,11 @@ Build instructions:
     ```
     meson test -C build -v
     ```
+
+Using Address Sanitizer:
+
+https://mesonbuild.com/howtox.html#use-address-sanitizer
+
+```
+meson configure build -Db_sanitize=address
+```

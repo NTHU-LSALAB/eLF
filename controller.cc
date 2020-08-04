@@ -9,6 +9,26 @@
 
 #include "controller.h"
 
+class FutureMap {
+    struct Item {
+        std::promise<std::string> promise;
+        std::shared_future<std::string> future;
+        Item() : future(promise.get_future()) {}
+    };
+    absl::Mutex mux;
+    std::unordered_map<std::string, Item> map;
+
+public:
+    void set(const std::string &k, const std::string &v) {
+        absl::MutexLock l(&mux);
+        map[k].promise.set_value(v);
+    }
+    std::shared_future<std::string> get(const std::string &k) {
+        absl::MutexLock l(&mux);
+        return map[k].future;
+    }
+};
+
 class LocalController : public Controller {
 public:
     LocalController() : update_thread(&LocalController::update_loop, this) {}
@@ -96,6 +116,18 @@ public:
         conf_id = -1;
     }
 
+    void kv_set(int64_t conf_id, const std::string &key, const std::string &value) override {
+        absl::MutexLock l(&kv_mux);
+        kv[conf_id].set(key, value);
+    }
+
+    std::string kv_get(int64_t conf_id, const std::string &key) override {
+        absl::ReleasableMutexLock l(&kv_mux);
+        auto future = kv[conf_id].get(key);
+        l.Release();
+        return future.get();
+    }
+
 private:
     // tracking the last configuration
     int64_t conf_id = 0;
@@ -115,6 +147,8 @@ private:
     std::unordered_map<int64_t, std::unique_ptr<WorkerHandle>> workers;
     std::deque<std::pair<int64_t, std::promise<int64_t>>> waiters;
     std::thread update_thread;
+    absl::Mutex kv_mux;
+    std::unordered_map<int64_t, FutureMap> kv;
 
     struct ConfState {
         int64_t conf_id;
@@ -180,12 +214,6 @@ private:
                 rank++;
             }
         }
-    }
-
-    void kv_set(int64_t conf_id, const std::string &key, const std::string &value) override {}
-
-    std::string kv_get(int64_t conf_id, const std::string &key) override {
-        return "not implemented";
     }
 
     // commit changes
