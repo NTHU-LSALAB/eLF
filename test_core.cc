@@ -200,7 +200,7 @@ TEMPLATE_TEST_CASE("controller",
             REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
             REQUIRE(3 == futB.get());
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(0 == futA.get());
+            REQUIRE(-1 == futA.get());
         }
 
         SECTION("existing workers reaches batch first") {
@@ -214,7 +214,7 @@ TEMPLATE_TEST_CASE("controller",
             // allow A to leave
             auto futA = c->begin_batch(a, 2);
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(0 == futA.get());
+            REQUIRE(-1 == futA.get());
         }
     }
 

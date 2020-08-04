@@ -50,7 +50,7 @@ public:
                 // already left
                 // TODO: conf_states may be empty on wrong usage
                 std::promise<int64_t> p;
-                p.set_value(0);
+                p.set_value(-1);
                 future = p.get_future();
                 return future;
             }
@@ -74,7 +74,7 @@ public:
                         }
                         if (workers.at(waiter_it->first)->leave_at <= conf_id) {
                             // the worker can leave
-                            waiter_it->second.set_value(0);
+                            waiter_it->second.set_value(-1);
                             waiter_it = waiters.erase(waiter_it);
                             continue;
                         }
