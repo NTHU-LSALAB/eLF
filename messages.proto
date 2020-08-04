@@ -48,7 +48,7 @@ message KVSetResponse {}
 
 message KVGetRequest {
   int64 conf_id = 1;
-  string key = 2;
+  bytes key = 2;
 }
 
-message KVGetResponse { string value = 1; }
+message KVGetResponse { bytes value = 1; }
