@@ -18,6 +18,9 @@ absl_dep = [
     absl_proj.get_variable('absl_synchronization_dep')
 ]
 
+pcg_cpp_proj = subproject('pcg')
+pcg_cpp_dep = pcg_cpp_proj.get_variable('pcg_cpp_dep')
+
 protoc = find_program('protoc')
 grpc_cpp_plugin = find_program('grpc_cpp_plugin')
 # meson: Using generator(): https://mesonbuild.com/Generating-sources.html#using-generator
@@ -86,6 +89,14 @@ test_nccl = executable(
     dependencies: [test_deps, absl_dep, threads_dep, nccl_deps, openmp_dep],
     link_with: [elf_comm_nccl],
 )
+
+test_shard = executable(
+    'test_shard',
+    'test_main.cc', 'test_shard.cc',
+    dependencies: [test_deps, pcg_cpp_dep],
+)
+
+test('test_shard', test_shard, timeout: 10, suite: 'cpp')
 
 test('test_nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'], suite: 'cpp')
 
