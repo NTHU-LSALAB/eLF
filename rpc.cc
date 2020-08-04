@@ -184,7 +184,7 @@ public:
         : stub(ControllerRPC::NewStub(
               grpc::CreateChannel(address, grpc::InsecureChannelCredentials()))) {}
     ~RemoteController() override {
-        for (auto& thread: threads) {
+        for (auto &thread : threads) {
             thread.join();
         }
     }
@@ -197,7 +197,8 @@ public:
         Update update;
         assert(reader->Read(&update));
         callback(Controller::UpdateData{update.conf_id(), update.rank(), update.size()});
-        threads.emplace_back(update_loop, std::move(cctx), std::move(reader), callback);
+        threads.emplace_back(
+            update_loop, update.id(), std::move(cctx), std::move(reader), callback);
         return update.id();
     }
 
@@ -255,7 +256,8 @@ public:
     }
 
 private:
-    static void update_loop(std::unique_ptr<ClientContext>,
+    static void update_loop(int64_t id,
+        std::unique_ptr<ClientContext>,
         std::unique_ptr<grpc::ClientReader<Update>> reader,
         update_callback_t callback) {
         Update update;

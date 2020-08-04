@@ -1,6 +1,8 @@
 #include <chrono>
 #include <cstdint>
 #include <future>
+#include <iostream>
+#include <queue>
 #include <stdexcept>
 
 #include <absl/strings/str_format.h>
@@ -35,25 +37,28 @@ TEST_CASE("library usage") {
 class CallbackMock {
     using ReturnType = Controller::UpdateData;
     int64_t n_calls = 0;
-    int64_t desired_n = 0;
+    int64_t last_get = 0;
     ReturnType value;
     absl::Mutex mux;
 
-    bool value_is_ready() {
-        return n_calls == desired_n;
-    }
+    struct ValueIsReady {
+        int64_t desired_n;
+        CallbackMock &mock;
+        bool operator()() const {
+            return desired_n == mock.n_calls;
+        }
+    };
 
 public:
     ReturnType get(int64_t n = -1) {
         absl::MutexLock l(&mux);
         if (n == -1) {
-            n = n_calls + 1;
+            n = ++last_get;
+        } else {
+            last_get = n;
         }
-        assert(desired_n == 0);
-        desired_n = n;
-        bool status = mux.AwaitWithTimeout(
-            absl::Condition(this, &CallbackMock::value_is_ready), absl::FromChrono(wait_time));
-        desired_n = 0;
+        ValueIsReady vr{n, *this};
+        bool status = mux.AwaitWithTimeout(absl::Condition(&vr), absl::FromChrono(wait_time));
         if (!status) {
             return ReturnType{-111, -222, -333};
         }
@@ -171,7 +176,6 @@ TEMPLATE_TEST_CASE("controller",
         }
 
         // first worker requests leaving
-        INFO(a << " leaving");
         c->leave(a);
         confB = mockB.get();
         REQUIRE(confB.conf_id == 3);
