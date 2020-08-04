@@ -8,26 +8,7 @@
 #include <absl/synchronization/mutex.h>
 
 #include "controller.h"
-
-class FutureMap {
-    struct Item {
-        std::promise<std::string> promise;
-        std::shared_future<std::string> future;
-        Item() : future(promise.get_future()) {}
-    };
-    absl::Mutex mux;
-    std::unordered_map<std::string, Item> map;
-
-public:
-    void set(const std::string &k, const std::string &v) {
-        absl::MutexLock l(&mux);
-        map[k].promise.set_value(v);
-    }
-    std::shared_future<std::string> get(const std::string &k) {
-        absl::MutexLock l(&mux);
-        return map[k].future;
-    }
-};
+#include "lkvs_impl.h"
 
 class ConcreteController : public Controller {
 public:
@@ -146,7 +127,7 @@ private:
     std::deque<std::pair<int64_t, std::promise<int64_t>>> waiters;
     std::thread update_thread;
     absl::Mutex kv_mux;
-    std::unordered_map<int64_t, FutureMap> kv;
+    std::unordered_map<int64_t, LocalKeyValueStore> kv;
 
     struct ConfState {
         int64_t conf_id;
