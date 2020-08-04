@@ -1,22 +1,15 @@
 #include <catch2/catch.hpp>
 
-#include <absl/strings/str_format.h>
 #include <algorithm>
+#include <array>
+
+#include <absl/strings/str_format.h>
 #include <cuda_runtime.h>
 #include <omp.h>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
 
+#include "cuda_helper.h"
 #include "lkvs_impl.h"
 #include "nccl_communicator.h"
-
-#define CUDA_ASSERT(status)                                                                        \
-    do {                                                                                           \
-        if (status) {                                                                              \
-            throw std::runtime_error(absl::StrFormat("%s:%d cudaError_t(%d): %s", __FILE__,        \
-                __LINE__, status, cudaGetErrorString(status)));                                    \
-        }                                                                                          \
-    } while (0)
 
 TEMPLATE_TEST_CASE("nccl communicator",
     "[communicator][nccl]",
@@ -44,54 +37,25 @@ TEMPLATE_TEST_CASE("nccl communicator",
         CUDA_ASSERT(cudaSetDevice(std::min(omp_get_thread_num(), device_count - 1)));
         auto comm = create_nccl_communicator(&lkvs, "var1", omp_get_thread_num(), 2);
 
-        thrust::host_vector<TestType> H(4);
+        std::array<TestType, 4> H;
         if (omp_get_thread_num() == 0) {
-            H[0] = 1;
-            H[1] = 2;
-            H[2] = 3;
-            H[3] = 4;
+            H = {1, 2, 3, 4};
         } else {
-            H[0] = 0;
-            H[1] = 8;
-            H[2] = 3;
-            H[3] = 6;
+            H = {0, 8, 3, 6};
         }
-        thrust::device_vector<TestType> Dsrc = H;
-        thrust::device_vector<TestType> Ddst = H;
+        gpu_array<TestType, 4> Dsrc, Ddst;
+        Dsrc = H;
 
-        comm->allreduce(thrust::raw_pointer_cast(Dsrc.data()),
-            thrust::raw_pointer_cast(Ddst.data()), 4, elf::Communicator::datatype_of<TestType>());
-        H = Ddst;
+        comm->allreduce(Dsrc.data(), Ddst.data(), 4, elf::Communicator::datatype_of<TestType>());
 #pragma omp critical
-        {
-            CHECK(H[0] == 1);
-            CHECK(H[1] == 10);
-            CHECK(H[2] == 6);
-            CHECK(H[3] == 10);
-        }
+        { CHECK(Ddst.cpu() == std::array<TestType, 4>{1, 10, 6, 10}); }
 
-        comm->broadcast(thrust::raw_pointer_cast(Dsrc.data()),
-            thrust::raw_pointer_cast(Ddst.data()), 0, 4,
-            elf::Communicator::datatype_of<TestType>());
-        H = Ddst;
+        comm->broadcast(Dsrc.data(), Ddst.data(), 0, 4, elf::Communicator::datatype_of<TestType>());
 #pragma omp critical
-        {
-            CHECK(H[0] == 1);
-            CHECK(H[1] == 2);
-            CHECK(H[2] == 3);
-            CHECK(H[3] == 4);
-        }
+        { CHECK(Ddst.cpu() == std::array<TestType, 4>{1, 2, 3, 4}); }
 
-        comm->broadcast(thrust::raw_pointer_cast(Dsrc.data()),
-            thrust::raw_pointer_cast(Ddst.data()), 1, 4,
-            elf::Communicator::datatype_of<TestType>());
-        H = Ddst;
+        comm->broadcast(Dsrc.data(), Ddst.data(), 1, 4, elf::Communicator::datatype_of<TestType>());
 #pragma omp critical
-        {
-            CHECK(H[0] == 0);
-            CHECK(H[1] == 8);
-            CHECK(H[2] == 3);
-            CHECK(H[3] == 6);
-        }
+        { CHECK(Ddst.cpu() == std::array<TestType, 4>{0, 8, 3, 6}); }
     }
 }

@@ -54,7 +54,9 @@ public:
         : kvs(kvs), identifier(identifier), rank(rank), size(size) {
         init();
     }
-    ~NcclCommunicator() {}
+    ~NcclCommunicator() {
+        ncclCommDestroy(comm);
+    }
 
     void allreduce(void *src, void *dst, size_t count, Communicator::DataType datatype) override {
         assert_nccl(ncclAllReduce(src, dst, count, comm_type_to_nccl(datatype), ncclSum, comm, 0));

@@ -18,8 +18,8 @@ public:
     // execute the operator and return true if execution is scheduled successfully
     virtual bool execute_async(void *in,
         void *out,
-        Communicator::DataType type,
         size_t count,
+        Communicator::DataType type,
         std::function<void()> done_callback) = 0;
 };
 
