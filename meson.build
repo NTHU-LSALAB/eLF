@@ -80,7 +80,7 @@ test('test_nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'])
 test_worker = executable(
     'test_worker',
     'test_main.cc', 'test_worker.cc',
-    dependencies: [test_deps, absl_dep, threads_dep],
+    dependencies: [test_deps, absl_dep, threads_dep, nccl_deps],
     link_with: [elf_core, elf_comm_nccl],
 )
 
