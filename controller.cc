@@ -40,12 +40,9 @@ public:
 
         std::future<int64_t> future;
         {
-            absl::MutexLock l(&waiter_mux);
+            absl::MutexLock l(&worker_mux);
             waiters[id] = std::promise<int64_t>();
             future = waiters[id].get_future();
-        }
-        {
-            absl::MutexLock l(&worker_mux);
             auto conf_state = conf_states.begin();
             for (; conf_state != conf_states.end(); conf_state++) {
                 if (conf_state->conf_id > ready_conf_id) {
@@ -88,7 +85,6 @@ private:
     };
     absl::Mutex worker_mux;
     std::unordered_map<int64_t, std::unique_ptr<WorkerHandle>> workers;
-    absl::Mutex waiter_mux;
     std::unordered_map<int64_t, std::promise<int64_t>> waiters;
     std::thread update_thread;
 
