@@ -132,7 +132,11 @@ class Worker {
     std::vector<std::string> weight_variables;
 
     std::list<WorkerConf> confs;
-    absl::Mutex conf_mux;
+    // XXX: the callbacks may stil be triggered after this object is deallocated before the worker
+    // is unregistered from the controller.
+    // find a proper way to fix it
+    absl::Mutex &conf_mux;
+    bool &deleted;
 
     std::vector<std::string> identifiers;
 
@@ -142,11 +146,15 @@ class Worker {
     absl::Notification first_conf_pushed;
 
 public:
-    Worker(Controller *ctrl) : ctrl(ctrl) {
+    Worker(Controller *ctrl)
+        : ctrl(ctrl), conf_mux(*(new absl::Mutex)), deleted(*(new bool(false))) {
         CUDA_CHECK(cudaGetDevice(&gpu));
     }
     Worker(const Worker &) = delete;
-    ~Worker() {}
+    ~Worker() {
+        absl::MutexLock l(&conf_mux);
+        deleted = true;
+    }
 
     void commit_and_join(const std::string &name = "") {
         for (auto &gv : global_variables) {
@@ -158,6 +166,9 @@ public:
 
         id = ctrl->join(name, [this](Controller::UpdateData data) {
             absl::MutexLock l(&conf_mux);
+            if (deleted) {
+                return;
+            }
             confs.emplace_back(gpu, data.conf_id, data.rank, data.size,
                 std::make_shared<ControllerKVSAdapter>(ctrl, data.conf_id), identifiers);
             if (!first_conf_pushed.HasBeenNotified()) {
