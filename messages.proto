@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-service Controller {
+service Coordinator {
   rpc Join(JoinRequest) returns (stream Updates) {}
   rpc Leave(LeaveRequest) returns (LeaveResponse) {}
   rpc BeginBatch(BeginBatchRequest) returns (BeginBatchResponse) {}
