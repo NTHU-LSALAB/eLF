@@ -1,12 +1,15 @@
-Prerequisites:
+## Prerequisites
+
+Please have these installed before proceeding
 
 * [clang](https://clang.llvm.org/)
 * [protobuf](https://developers.google.com/protocol-buffers)
 * [grpc](https://grpc.io/)
 * [ninja](https://ninja-build.org/)
 * [meson](https://mesonbuild.com/) >= 0.55
+* [TensorFlow](https://www.tensorflow.org/) < 2
 
-Build instructions:
+## Build instructions
 
 1.  Configure the build:
 
@@ -33,3 +36,8 @@ Build instructions:
     ```
     meson test -C build -v
     ```
+
+
+## Running
+
+See `examples/`
