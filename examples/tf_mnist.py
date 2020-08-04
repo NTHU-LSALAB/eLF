@@ -123,11 +123,11 @@ def main(controller_address):
     def handler(signal, frame):
         print('Received Interrupt, request leaving...')
         worker.leave()
+    signal.signal(signal.SIGINT, handler)
 
     # The MonitoredTrainingSession takes care of session initialization,
     # restoring from a checkpoint, saving to a checkpoint, and closing when done
     # or an error occurs.
-    signal.signal(signal.SIGINT, handler)
     with tf.train.MonitoredTrainingSession(hooks=hooks,
                                            config=config) as mon_sess:
         opt._session = mon_sess
