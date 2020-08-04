@@ -1,4 +1,4 @@
-project('elfcore', 'cpp', default_options: ['cpp_std=c++14'])
+project('eLF', 'cpp', default_options: ['cpp_std=c++14'])
 
 clang = meson.get_compiler('cpp')
 assert(
@@ -50,7 +50,7 @@ pybind11_dep = pybind11_proj.get_variable('pybind11_dep')
 elf_core = shared_library(
     'elf_core',
     'controller.cc', 'rpc.cc', messages_generated,
-    dependencies: [absl_dep, grpc_deps, threads_dep]
+    dependencies: [absl_dep, grpc_deps, threads_dep],
 )
 
 elf_comm_nccl = shared_library(
@@ -96,5 +96,5 @@ python_installation.extension_module(
 test('test_python',
     python_prog,
     args: [files('test_python.py')],
-    env: ['PYTHONPATH=' + meson.current_build_dir()]
+    env: ['PYTHONPATH=' + meson.current_build_dir()],
 )
