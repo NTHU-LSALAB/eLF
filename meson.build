@@ -1,4 +1,4 @@
-project('elfcore', 'cpp')
+project('elfcore', 'cpp', default_options: ['cpp_std=c++17'])
 
 clang = meson.get_compiler('cpp')
 assert(
@@ -8,6 +8,8 @@ assert(
 
 threads_dep = dependency('threads')
 catch2_proj = subproject('catch2')
+nccl_deps = [dependency('cuda'), dependency('nccl')]
+openmp_dep = dependency('openmp')
 test_deps = [catch2_proj.get_variable('catch2_dep')]
 
 absl_proj = subproject('abseil-cpp')
@@ -45,3 +47,11 @@ test_core = executable(
 )
 
 test('core', test_core, timeout: 10)
+
+test_nccl = executable(
+    'test_nccl',
+    'test_main.cc', 'test_nccl.cc', 'nccl_communicator.cc',
+    dependencies: [test_deps, absl_dep, threads_dep, nccl_deps, openmp_dep],
+)
+
+test('nccl', test_nccl, timeout: 10)
