@@ -46,34 +46,51 @@ python_prog = find_program(python_installation.path())
 pybind11_proj = subproject('pybind11')
 pybind11_dep = pybind11_proj.get_variable('pybind11_dep')
 
+# Note: libelf is something else
+elf_core = shared_library(
+    'elf_core',
+    'controller.cc', 'rpc.cc', messages_generated,
+    dependencies: [absl_dep, grpc_deps, threads_dep]
+)
+
+elf_comm_nccl = shared_library(
+    'elf_comm_nccl',
+    'nccl_communicator.cc',
+    dependencies: [absl_dep, threads_dep, nccl_deps],
+)
+
 test_core = executable(
     'test_core',
-    'test_main.cc', 'test_core.cc', 'controller.cc', 'rpc.cc', messages_generated,
-    dependencies: [test_deps, absl_dep, grpc_deps, threads_dep],
+    'test_main.cc', 'test_core.cc',
+    dependencies: [test_deps, absl_dep, threads_dep],
+    link_with: [elf_core],
 )
 
 test('test_core', test_core, timeout: 10)
 
 test_nccl = executable(
     'test_nccl',
-    'test_main.cc', 'test_nccl.cc', 'nccl_communicator.cc',
+    'test_main.cc', 'test_nccl.cc',
     dependencies: [test_deps, absl_dep, threads_dep, nccl_deps, openmp_dep],
+    link_with: [elf_comm_nccl],
 )
 
 test('test_nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'])
 
 test_worker = executable(
     'test_worker',
-    'test_main.cc', 'test_worker.cc', 'controller.cc', 'nccl_communicator.cc',
-    dependencies: [test_deps, absl_dep, threads_dep, nccl_deps]
+    'test_main.cc', 'test_worker.cc',
+    dependencies: [test_deps, absl_dep, threads_dep],
+    link_with: [elf_core, elf_comm_nccl],
 )
 
 test('test_worker', test_worker, timeout: 10, env: ['NCCL_DEBUG=WARN'])
 
 python_installation.extension_module(
     '_elf',
-    'python/_elf.cc', 'controller.cc', 'rpc.cc', messages_generated,
-    dependencies: [pybind11_dep, absl_dep, threads_dep, grpc_deps],
+    'python/_elf.cc',
+    dependencies: [pybind11_dep],
+    link_with: [elf_core],
 )
 
 test('test_python',
