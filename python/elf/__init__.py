@@ -30,7 +30,7 @@ class Worker(_elf.Worker):
             if list_ is None:
                 yield shard_number
             else:
-                yield [list_[shard_number * batch_size + i] for i in range(batch_size)]
+                yield [list_[(shard_number * batch_size + i) % len(list_)] for i in range(batch_size)]
 
     def broadcast(self):
         print('broadcast triggered')

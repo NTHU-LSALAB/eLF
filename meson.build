@@ -135,5 +135,6 @@ test('test_python_tensorflow',
 test('test_python_elf',
     python_prog,
     args: [files('test_python_elf.py')],
-    env: ['PYTHONPATH=' + meson.current_build_dir() + ':' + join_paths(meson.current_source_dir(), 'python')]
+    env: ['PYTHONPATH=' + meson.current_build_dir() + ':' + join_paths(meson.current_source_dir(), 'python')],
+    timeout: 10,
 )

@@ -9,10 +9,15 @@ class BindingTest(unittest.TestCase):
     def test_create_controller(self):
         ctrl = _elf.create_controller()
 
+        ctrl.stop()
+
     def test_export_controller(self):
         ctrl = _elf.create_controller()
         ectrl = _elf.export_controller(ctrl, '127.0.0.1:')
         cctrl = _elf.connect_controller('127.0.0.1:{}'.format(ectrl.listening_port()))
+
+        ectrl.stop()
+        ctrl.stop()
 
     def test_worker(self):
         ctrl = _elf.create_controller()
@@ -26,6 +31,8 @@ class BindingTest(unittest.TestCase):
         self.assertEqual(worker.begin_batch()[:2], (True, False))
         self.assertEqual(broadcast.get_handle()[:2], '0x')
         self.assertEqual(allreduce.get_handle()[:2], '0x')
+
+        ctrl.stop()
 
 
 if __name__ == '__main__':
