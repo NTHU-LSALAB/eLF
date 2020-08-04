@@ -52,6 +52,7 @@ public:
             ready_.Notify();
         }
     }
+    WorkerConf(const WorkerConf &) = delete;
 
     bool ready() {
         return ready_.HasBeenNotified();
