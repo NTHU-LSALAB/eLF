@@ -45,7 +45,7 @@ class CallbackMock {
         int64_t desired_n;
         CallbackMock &mock;
         bool operator()() const {
-            return desired_n == mock.n_calls;
+            return desired_n <= mock.n_calls;
         }
     };
 
@@ -53,15 +53,14 @@ public:
     ReturnType get(int64_t n = -1) {
         absl::MutexLock l(&mux);
         if (n == -1) {
-            n = ++last_get;
-        } else {
-            last_get = n;
+            n = last_get + 1;
         }
         ValueIsReady vr{n, *this};
         bool status = mux.AwaitWithTimeout(absl::Condition(&vr), absl::FromChrono(wait_time));
         if (!status) {
             return ReturnType{-111, -222, -333};
         }
+        last_get = n_calls;
         return value;
     }
     std::function<void(ReturnType)> callback() {
@@ -257,7 +256,7 @@ TEMPLATE_TEST_CASE("controller",
     }
 
     SECTION("100 workers") {
-        const int64_t test_size = 1;
+        const int64_t test_size = 100;
         std::vector<int64_t> workers;
         std::vector<CallbackMock> mocks(test_size);
         for (int i = 0; i < test_size; i++) {
