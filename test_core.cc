@@ -287,7 +287,7 @@ TEMPLATE_TEST_CASE("controller",
 
         std::vector<std::future<void>> futures;
         std::vector<std::atomic_int64_t> max(test_size);
-        for (auto& m: max) {
+        for (auto &m : max) {
             m.store(-444);
         }
         for (int64_t i = 0; i < test_size; i++) {
@@ -308,6 +308,66 @@ TEMPLATE_TEST_CASE("controller",
                 absl::StrFormat("Checking worker-%d(%d) conf_id:%d", i, workers[i], max[i].load()));
             CHECK(futures[i].wait_until(deadline) == std::future_status::ready);
             futures[i].get();
+        }
+    }
+
+    SECTION("scaling a lot of workers") {
+        const int64_t step_size = 16;
+        const int64_t n_steps = 4;
+        std::vector<int64_t> workers;
+        std::vector<CallbackMock> mocks(step_size * n_steps);
+        for (int64_t step = 0; step < n_steps; step++) {
+            const int64_t prev_step = step * step_size;
+            const int64_t this_step = prev_step + step_size;
+            INFO("scaling from " << prev_step << " workers to " << this_step << " workers");
+            for (int i = prev_step; i < this_step; i++) {
+                std::string worker_name = absl::StrFormat("worker-%d", i);
+                UNSCOPED_INFO("joining " << worker_name);
+                int64_t id = c->join(worker_name, mocks[i].callback());
+                CAPTURE(id);
+                workers.push_back(id);
+            }
+            int64_t last_conf_id;
+            for (int64_t i = 0; i < this_step; i++) {
+                last_conf_id = 0;
+                while (true) {
+                    auto data = mocks[i].get();
+                    CAPTURE(i, last_conf_id, data.conf_id, data.rank, data.size);
+                    REQUIRE(data.conf_id > last_conf_id);
+                    REQUIRE(data.rank < data.size);
+                    REQUIRE(data.size > 0);
+                    REQUIRE(data.size <= this_step);
+                    last_conf_id = data.conf_id;
+                    if (data.size == this_step) {
+                        break;
+                    }
+                }
+            }
+
+            std::vector<std::future<void>> futures;
+            std::vector<std::atomic_int64_t> max(this_step);
+            for (auto &m : max) {
+                m.store(-444);
+            }
+            for (int64_t i = 0; i < this_step; i++) {
+                futures.emplace_back(std::async(std::launch::async, [&, i]() {
+                    while (true) {
+                        int64_t conf_id = c->begin_batch(workers[i], last_conf_id).get();
+                        max[i].store(conf_id);
+                        if (last_conf_id == conf_id) {
+                            break;
+                        };
+                        std::this_thread::sleep_for(wait_time);
+                    }
+                }));
+            }
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+            for (int64_t i = 0; i < this_step; i++) {
+                INFO(absl::StrFormat("Checking worker-%d(%d) receives conf_id %d/%d", i, workers[i],
+                    max[i].load(), last_conf_id));
+                CHECK(futures[i].wait_until(deadline) == std::future_status::ready);
+                futures[i].get();
+            }
         }
     }
 }
