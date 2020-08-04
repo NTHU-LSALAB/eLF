@@ -7,6 +7,8 @@
 #include <memory>
 #include <string>
 
+namespace elf {
+
 class Controller {
 protected:
     Controller() {}
@@ -73,3 +75,5 @@ std::unique_ptr<Controller> create_controller();
 std::unique_ptr<Controller> connect_controller(const std::string &address);
 
 std::unique_ptr<ExportedController> export_controller(Controller *c, const std::string &address);
+
+} // namespace elf

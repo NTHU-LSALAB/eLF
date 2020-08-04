@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <type_traits>
 
+namespace elf {
+
 class Communicator {
 
 protected:
@@ -47,3 +49,5 @@ public:
         return invalid;
     }
 };
+
+} // namespace elf

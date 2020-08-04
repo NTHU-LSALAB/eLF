@@ -37,7 +37,7 @@ TEST_CASE("library usage") {
 }
 
 class CallbackMock {
-    using ReturnType = Controller::UpdateData;
+    using ReturnType = elf::Controller::UpdateData;
     int64_t n_calls = 0;
     int64_t last_get = 0;
     ReturnType value;
@@ -75,25 +75,25 @@ public:
 };
 
 struct TestConcreteController {
-    TestConcreteController() : c(create_controller()) {}
-    Controller *controller() {
+    TestConcreteController() : c(elf::create_controller()) {}
+    elf::Controller *controller() {
         return c.get();
     }
-    std::unique_ptr<Controller> c;
+    std::unique_ptr<elf::Controller> c;
 };
 struct TestRemoteController {
     TestRemoteController()
-        : c(create_controller()), ec(export_controller(c.get(), "127.0.0.1:")),
-          rc(connect_controller(absl::StrFormat("127.0.0.1:%d", ec->listening_port()))) {}
+        : c(elf::create_controller()), ec(export_controller(c.get(), "127.0.0.1:")),
+          rc(elf::connect_controller(absl::StrFormat("127.0.0.1:%d", ec->listening_port()))) {}
     ~TestRemoteController() {
         ec->stop();
     }
-    Controller *controller() {
+    elf::Controller *controller() {
         return rc.get();
     }
-    std::unique_ptr<Controller> c;
-    std::unique_ptr<ExportedController> ec;
-    std::unique_ptr<Controller> rc;
+    std::unique_ptr<elf::Controller> c;
+    std::unique_ptr<elf::ExportedController> ec;
+    std::unique_ptr<elf::Controller> rc;
 };
 
 TEMPLATE_TEST_CASE("controller",
@@ -102,10 +102,10 @@ TEMPLATE_TEST_CASE("controller",
     TestRemoteController) {
 
     TestType helper;
-    Controller *c = helper.controller();
+    elf::Controller *c = helper.controller();
 
     SECTION("first joined worker has id 1") {
-        REQUIRE(1 == c->join("", [&](Controller::UpdateData) {}));
+        REQUIRE(1 == c->join("", [&](elf::Controller::UpdateData) {}));
     }
 
     SECTION("one worker") {
@@ -378,7 +378,7 @@ TEMPLATE_TEST_CASE("controller-kv",
     TestRemoteController) {
 
     TestType helper;
-    Controller *c = helper.controller();
+    elf::Controller *c = helper.controller();
 
     SECTION("get after set") {
         c->kv_set(1, "key", "value");

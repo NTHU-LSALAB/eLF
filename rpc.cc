@@ -27,6 +27,10 @@ using grpc::ClientContext;
 using grpc::ServerContext;
 using grpc::Status;
 
+using namespace elf::messages;
+
+namespace elf {
+
 class UpdateReceiver {
     bool done = false;
     std::queue<Controller::UpdateData> q;
@@ -281,3 +285,5 @@ std::unique_ptr<Controller> connect_controller(const std::string &address) {
 std::unique_ptr<ExportedController> export_controller(Controller *c, const std::string &address) {
     return std::make_unique<ExportedControllerImpl>(c, address);
 }
+
+} // namespace elf

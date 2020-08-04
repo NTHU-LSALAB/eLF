@@ -1,7 +1,7 @@
 #include <catch2/catch.hpp>
 
-#include <algorithm>
 #include <absl/strings/str_format.h>
+#include <algorithm>
 #include <cuda_runtime.h>
 #include <omp.h>
 #include <thrust/device_vector.h>
@@ -28,20 +28,20 @@ TEMPLATE_TEST_CASE("nccl communicator",
     uint64_t,
     float,
     double) {
-        int device_count;
-        CUDA_ASSERT(cudaGetDeviceCount(&device_count));
-        if (device_count < 2) {
-            WARN("Less than 2 CUDA devices. This test may fail.");
-        }
+    int device_count;
+    CUDA_ASSERT(cudaGetDeviceCount(&device_count));
+    if (device_count < 2) {
+        WARN("Less than 2 CUDA devices. This test may fail.");
+    }
 
-    LocalKeyValueStore lkvs;
+    elf::LocalKeyValueStore lkvs;
 
-    auto interfere1 = create_nccl_communicator(&lkvs, "other-var-1", 0, 1);
-    auto interfere2 = create_nccl_communicator(&lkvs, "other-var-2", 0, 1);
+    auto interfere1 = elf::create_nccl_communicator(&lkvs, "other-var-1", 0, 1);
+    auto interfere2 = elf::create_nccl_communicator(&lkvs, "other-var-2", 0, 1);
 
 #pragma omp parallel num_threads(2)
     {
-        CUDA_ASSERT(cudaSetDevice(std::min(omp_get_thread_num(), device_count-1)));
+        CUDA_ASSERT(cudaSetDevice(std::min(omp_get_thread_num(), device_count - 1)));
         auto comm = create_nccl_communicator(&lkvs, "var1", omp_get_thread_num(), 2);
 
         thrust::host_vector<TestType> H(4);
@@ -60,7 +60,7 @@ TEMPLATE_TEST_CASE("nccl communicator",
         thrust::device_vector<TestType> Ddst = H;
 
         comm->allreduce(thrust::raw_pointer_cast(Dsrc.data()),
-            thrust::raw_pointer_cast(Ddst.data()), 4, Communicator::datatype_of<TestType>());
+            thrust::raw_pointer_cast(Ddst.data()), 4, elf::Communicator::datatype_of<TestType>());
         H = Ddst;
 #pragma omp critical
         {
@@ -71,7 +71,8 @@ TEMPLATE_TEST_CASE("nccl communicator",
         }
 
         comm->broadcast(thrust::raw_pointer_cast(Dsrc.data()),
-            thrust::raw_pointer_cast(Ddst.data()), 0, 4, Communicator::datatype_of<TestType>());
+            thrust::raw_pointer_cast(Ddst.data()), 0, 4,
+            elf::Communicator::datatype_of<TestType>());
         H = Ddst;
 #pragma omp critical
         {
@@ -82,7 +83,8 @@ TEMPLATE_TEST_CASE("nccl communicator",
         }
 
         comm->broadcast(thrust::raw_pointer_cast(Dsrc.data()),
-            thrust::raw_pointer_cast(Ddst.data()), 1, 4, Communicator::datatype_of<TestType>());
+            thrust::raw_pointer_cast(Ddst.data()), 1, 4,
+            elf::Communicator::datatype_of<TestType>());
         H = Ddst;
 #pragma omp critical
         {

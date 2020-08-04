@@ -6,6 +6,8 @@
 
 #include "kvs.h"
 
+namespace elf {
+
 class LocalKeyValueStore : public KeyValueStore {
 
     struct Item {
@@ -29,3 +31,5 @@ public:
         return map[k].future;
     }
 };
+
+} // namespace elf

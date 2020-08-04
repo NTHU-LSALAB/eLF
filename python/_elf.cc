@@ -5,8 +5,8 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(_elf, m) {
-    m.def("create_controller", &create_controller);
-    m.def("export_controller", &export_controller);
-    py::class_<Controller>(m, "Controller");
-    py::class_<ExportedController>(m, "ExportedController");
+    m.def("create_controller", &elf::create_controller);
+    m.def("export_controller", &elf::export_controller);
+    py::class_<elf::Controller>(m, "Controller");
+    py::class_<elf::ExportedController>(m, "ExportedController");
 }

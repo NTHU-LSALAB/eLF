@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package elf.messages;
+
 service ControllerRPC {
   rpc Join(JoinRequest) returns (stream Update) {}
   rpc Leave(LeaveRequest) returns (LeaveResponse) {}

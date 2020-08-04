@@ -10,6 +10,8 @@
 #include "kvs.h"
 #include "nccl_communicator.h"
 
+namespace elf {
+
 void assert_nccl(ncclResult_t result) {
     if (result) {
         throw std::runtime_error(
@@ -84,3 +86,5 @@ std::unique_ptr<Communicator>
 create_nccl_communicator(KeyValueStore *kvs, const std::string &identifier, int rank, int size) {
     return std::make_unique<NcclCommunicator>(kvs, identifier, rank, size);
 }
+
+} // namespace elf

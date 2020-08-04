@@ -7,6 +7,6 @@
 #include "controller.h"
 
 TEST_CASE("smoke") {
-    auto controller = create_controller();
-    Worker w(controller.get());
+    auto controller = elf::create_controller();
+    elf::Worker w(controller.get());
 }

@@ -10,6 +10,8 @@
 #include "controller.h"
 #include "lkvs_impl.h"
 
+namespace elf {
+
 class ConcreteController : public Controller {
 public:
     ConcreteController() : update_thread(&ConcreteController::update_loop, this) {}
@@ -205,3 +207,5 @@ private:
 std::unique_ptr<Controller> create_controller() {
     return std::make_unique<ConcreteController>();
 }
+
+} // namespace elf

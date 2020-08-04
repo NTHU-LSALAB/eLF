@@ -14,6 +14,8 @@
 #include "lkvs_impl.h"
 #include "nccl_communicator.h"
 
+namespace elf {
+
 class WorkerConf {
 public:
     const int64_t id;
@@ -99,10 +101,10 @@ public:
     ~Worker() {}
 
     void join(const std::string &name = "") {
-        for (auto& gv: global_variables) {
+        for (auto &gv : global_variables) {
             identifiers.push_back("g-" + gv);
         }
-        for (auto& wv: weight_variables) {
+        for (auto &wv : weight_variables) {
             identifiers.push_back("w-" + wv);
         }
 
@@ -145,3 +147,5 @@ public:
         return std::make_tuple(true, 0);
     }
 };
+
+} // namespace elf
