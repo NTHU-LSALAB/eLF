@@ -190,14 +190,20 @@ private:
     }
 
     void broadcast_updates() {
-        int rank = 0;
+        std::vector<WorkerHandle *> active_handles;
         for (auto &w : workers) {
             if (w.second->leave_at > conf_id) {
-                if (auto callback = w.second->callback) {
-                    callback({conf_id, rank, active_workers});
-                }
-                rank++;
+                active_handles.push_back(w.second.get());
             }
+        }
+        int64_t rank = 0;
+        std::sort(active_handles.begin(), active_handles.end(),
+            [](WorkerHandle *a, WorkerHandle *b) -> bool { return a->id < b->id; });
+        for (auto &handle : active_handles) {
+            if (auto callback = handle->callback) {
+                callback({conf_id, rank, active_workers});
+            }
+            rank++;
         }
     }
 

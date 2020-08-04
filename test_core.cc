@@ -155,6 +155,11 @@ TEMPLATE_TEST_CASE("controller",
         REQUIRE(confA.conf_id == 2);
         REQUIRE(confB.conf_id == 2);
         REQUIRE(confA.rank != confB.rank);
+        {
+            // the oldest worker must have rank 0 for broadcast to work
+            REQUIRE(confA.rank == 0);
+            REQUIRE(confB.rank == 1);
+        }
         REQUIRE(confA.size == 2);
         REQUIRE(confB.size == 2);
 
