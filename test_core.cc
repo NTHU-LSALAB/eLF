@@ -1,3 +1,4 @@
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <future>
@@ -9,6 +10,7 @@
 #include <absl/synchronization/mutex.h>
 
 #include <catch2/catch.hpp>
+#include <thread>
 
 #include "controller.h"
 
@@ -100,7 +102,7 @@ TEMPLATE_TEST_CASE("controller",
     TestRemoteController) {
 
     TestType helper;
-    auto c = helper.controller();
+    Controller *c = helper.controller();
 
     SECTION("first joined worker has id 1") {
         REQUIRE(1 == c->join("", [&](Controller::UpdateData) {}));
@@ -255,8 +257,8 @@ TEMPLATE_TEST_CASE("controller",
         }
     }
 
-    SECTION("100 workers") {
-        const int64_t test_size = 100;
+    SECTION("a lot of workers") {
+        const int64_t test_size = 64;
         std::vector<int64_t> workers;
         std::vector<CallbackMock> mocks(test_size);
         for (int i = 0; i < test_size; i++) {
@@ -266,8 +268,9 @@ TEMPLATE_TEST_CASE("controller",
             CAPTURE(id);
             workers.push_back(id);
         }
+        int64_t last_conf_id;
         for (int64_t i = 0; i < test_size; i++) {
-            int64_t last_conf_id = 0;
+            last_conf_id = 0;
             while (true) {
                 auto data = mocks[i].get();
                 CAPTURE(i, last_conf_id, data.conf_id, data.rank, data.size);
@@ -281,6 +284,28 @@ TEMPLATE_TEST_CASE("controller",
                 }
             }
         }
+
+        std::vector<std::future<void>> futures;
+        std::vector<std::atomic_int64_t> max(test_size);
+        for (int64_t i = 0; i < test_size; i++) {
+            futures.emplace_back(std::async(std::launch::async, [&, i]() {
+                while (true) {
+                    int64_t conf_id = c->begin_batch(workers[i], last_conf_id).get();
+                    max[i].store(conf_id);
+                    if (last_conf_id == conf_id) {
+                        break;
+                    };
+                    std::this_thread::sleep_for(wait_time);
+                }
+            }));
+        }
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        for (int64_t i = 0; i < test_size; i++) {
+            INFO(
+                absl::StrFormat("Checking worker-%d(%d) reached:%d", i, workers[i], max[i].load()));
+            CHECK(futures[i].wait_until(deadline) == std::future_status::ready);
+            futures[i].get();
+        }
     }
 }
 
@@ -290,7 +315,7 @@ TEMPLATE_TEST_CASE("controller-kv",
     TestRemoteController) {
 
     TestType helper;
-    auto c = helper.controller();
+    Controller *c = helper.controller();
 
     SECTION("get after set") {
         c->kv_set(1, "key", "value");

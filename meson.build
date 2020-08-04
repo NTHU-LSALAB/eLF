@@ -44,4 +44,4 @@ test_core = executable(
     dependencies: [test_deps, absl_dep, grpc_deps, threads_dep],
 )
 
-test('core', test_core)
+test('core', test_core, timeout: 10)
