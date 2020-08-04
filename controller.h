@@ -1,5 +1,7 @@
 #include <cstdint>
+#include <deque>
 #include <functional>
+#include <future>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -38,11 +40,17 @@ public:
     // ready_conf_id: the configuration that the worker is ready for
     // returns the configuration id to use in this batch
     // -1 is returned if training should be stopped
-    int64_t begin_batch(int64_t id, int64_t ready_conf_id);
+    std::future<int64_t> begin_batch(int64_t id, int64_t ready_conf_id);
 
     // indicate that the batch is finished
     // only used for profiling
     void end_batch(int64_t id);
+
+    // set the value associated with the key
+    void kv_set(int64_t conf_id, const std::string &key, const std::string &value);
+
+    // retrieve the value associated with the key
+    std::string kv_get(int64_t conf_id, const std::string &key);
 
     // stop the controller
     void stop() {
@@ -65,11 +73,48 @@ private:
     };
     absl::Mutex worker_mux;
     std::unordered_map<int64_t, std::unique_ptr<WorkerHandle>> workers;
+    absl::Mutex waiter_mux;
+    std::unordered_map<int64_t, std::promise<int64_t>> waiters;
+    struct ConfState {
+        int64_t conf_id;
+        int64_t ready_count = 0;
+        std::unordered_map<int64_t, bool> workers;
+        ConfState(int64_t conf_id, const typeof(Controller::workers) &wmap) : conf_id(conf_id) {
+            for (auto &w : wmap) {
+                workers[w.first] = false;
+            }
+        }
+        void clear() {
+            for (auto &worker : workers) {
+                worker.second = false;
+            }
+            ready_count = 0;
+        }
+        bool set_ready(int64_t id) {
+            auto it = workers.find(id);
+            if (it == workers.end()) {
+                return false;
+            }
+            if (it->second == true) {
+                return false;
+            }
+            it->second = true;
+            ready_count++;
+            return ready_count == workers.size();
+        }
+    };
+    std::deque<ConfState> conf_states;
 
     void check() {
         if (conf_id == -1) {
             throw std::runtime_error("The controller is stopping and connot accept new requests");
         }
+    }
+
+    // commit changes
+    void commit() {
+        conf_id++;
+        conf_states.emplace_front(conf_id, workers);
     }
 
     std::thread update_thread;
