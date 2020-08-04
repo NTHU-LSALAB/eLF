@@ -62,7 +62,7 @@ public:
     }
 
     bool schedule_allreduce(const std::string &identifier,
-        void *in,
+        const void *in,
         void *out,
         size_t count,
         Communicator::DataType type,
@@ -77,7 +77,7 @@ public:
     }
 
     bool schedule_broadcast(const std::string &identifier,
-        void *in,
+        const void *in,
         void *out,
         size_t count,
         Communicator::DataType type,
@@ -195,7 +195,7 @@ public:
         Allreduce(Worker &worker, const std::string &identifier)
             : worker(worker), identifier(identifier) {}
         ~Allreduce() {}
-        bool execute_async(void *in,
+        bool execute_async(const void *in,
             void *out,
             size_t count,
             Communicator::DataType type,
@@ -213,7 +213,7 @@ public:
         Broadcast(Worker &worker, const std::string &identifier)
             : worker(worker), identifier(identifier) {}
         ~Broadcast() {}
-        bool execute_async(void *in,
+        bool execute_async(const void *in,
             void *out,
             size_t count,
             Communicator::DataType type,

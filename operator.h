@@ -16,7 +16,7 @@ public:
     virtual ~Operator() {}
 
     // execute the operator and return true if execution is scheduled successfully
-    virtual bool execute_async(void *in,
+    virtual bool execute_async(const void *in,
         void *out,
         size_t count,
         Communicator::DataType type,

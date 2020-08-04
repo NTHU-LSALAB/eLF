@@ -16,9 +16,9 @@ public:
 
     Communicator(const Communicator &) = delete;
     virtual ~Communicator() {}
-    virtual void allreduce(void *src, void *dst, size_t count, Communicator::DataType datatype) = 0;
+    virtual void allreduce(const void *src, void *dst, size_t count, Communicator::DataType datatype) = 0;
     virtual void
-    broadcast(void *src, void *dst, int root, size_t count, Communicator::DataType datatype) = 0;
+    broadcast(const void *src, void *dst, int root, size_t count, Communicator::DataType datatype) = 0;
 
     template <typename T>
     static constexpr DataType datatype_of() {

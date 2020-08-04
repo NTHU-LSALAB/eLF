@@ -60,11 +60,12 @@ public:
         ncclCommDestroy(comm);
     }
 
-    void allreduce(void *src, void *dst, size_t count, Communicator::DataType datatype) override {
+    void
+    allreduce(const void *src, void *dst, size_t count, Communicator::DataType datatype) override {
         NCCL_CHECK(ncclAllReduce(src, dst, count, comm_type_to_nccl(datatype), ncclSum, comm, 0));
     }
 
-    void broadcast(void *src,
+    void broadcast(const void *src,
         void *dst,
         int root,
         size_t count,
