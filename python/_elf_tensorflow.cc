@@ -1,7 +1,19 @@
-#include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/framework/shape_inference.h"
+#include <sstream>
+#include <string>
+
+#include <tensorflow/core/framework/op_kernel.h>
+#include <tensorflow/core/framework/shape_inference.h>
+
+#include "operator.h"
 
 using namespace tensorflow;
+
+void *stringToPtr(const std::string &s) {
+    std::istringstream iss(s);
+    uintptr_t p;
+    iss >> p;
+    return (void *)p;
+}
 
 REGISTER_OP("ValueOperator")
     .Attr("T: {float32, float64, int32}")
@@ -14,30 +26,25 @@ REGISTER_OP("ValueOperator")
     });
 
 template <class T>
-class ValueOperatorOp : public OpKernel {
+class ValueOperatorOp : public AsyncOpKernel {
 public:
-    explicit ValueOperatorOp(OpKernelConstruction *context) : OpKernel(context) {}
-
-    void Compute(OpKernelContext *context) override {
-        // Grab the input tensor
-        const Tensor &input_tensor = context->input(0);
-        auto input = input_tensor.flat<T>();
-
-        // Create an output tensor
-        Tensor *output_tensor = NULL;
-        OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
-        auto output_flat = output_tensor->flat<T>();
-
-        // Set all but the first element of the output tensor to 0.
-        const int N = input.size();
-        for (int i = 1; i < N; i++) {
-            output_flat(i) = 0;
-        }
-
-        // Preserve the first input value if possible.
-        if (N > 0)
-            output_flat(0) = input(0);
+    explicit ValueOperatorOp(OpKernelConstruction *context) : AsyncOpKernel(context) {
+        std::string handle;
+        OP_REQUIRES_OK(context, context->GetAttr("handle", &handle));
+        elf_op = (elf::Operator *)stringToPtr(handle);
     }
+
+    void ComputeAsync(OpKernelContext *context, DoneCallback done) override {
+        auto tensor = context->input(0);
+        Tensor *output;
+        OP_REQUIRES_OK_ASYNC(context, context->allocate_output(0, tensor.shape(), &output), done);
+        auto in = tensor.tensor_data().data();
+        auto out = output->tensor_data().data();
+        elf_op->execute_async(in, out, tensor.NumElements(), elf::Communicator::datatype_of<T>(), done);
+    }
+
+private:
+    elf::Operator *elf_op;
 };
 
 REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<float>("T"),
