@@ -216,6 +216,73 @@ TEMPLATE_TEST_CASE("controller",
             REQUIRE(0 == futA.get());
         }
     }
+
+    SECTION("2 workers together") {
+        CallbackMock mockA, mockB;
+        int a = c->join("a", mockA.callback());
+        int b = c->join("b", mockB.callback());
+        CAPTURE(a, b);
+        REQUIRE(a > 0);
+        REQUIRE(b > 0);
+        REQUIRE(a != b);
+
+        // retrieve the updates
+        int64_t last_conf_id = 0;
+        while (true) {
+            auto data = mockA.get();
+            CAPTURE(last_conf_id, data.conf_id, data.rank, data.size);
+            REQUIRE(data.conf_id > last_conf_id);
+            REQUIRE(data.rank < data.size);
+            REQUIRE(data.size > 0);
+            REQUIRE(data.size <= 2);
+            last_conf_id = data.conf_id;
+            if (data.size == 2) {
+                break;
+            }
+        }
+
+        last_conf_id = 0;
+        while (true) {
+            auto data = mockB.get();
+            CAPTURE(last_conf_id, data.conf_id, data.rank, data.size);
+            REQUIRE(data.conf_id > last_conf_id);
+            REQUIRE(data.rank < data.size);
+            REQUIRE(data.size > 0);
+            REQUIRE(data.size <= 2);
+            last_conf_id = data.conf_id;
+            if (data.size == 2) {
+                break;
+            }
+        }
+    }
+
+    SECTION("100 workers") {
+        const int64_t test_size = 1;
+        std::vector<int64_t> workers;
+        std::vector<CallbackMock> mocks(test_size);
+        for (int i = 0; i < test_size; i++) {
+            std::string worker_name = absl::StrFormat("worker-%d", i);
+            UNSCOPED_INFO("joining " << worker_name);
+            int64_t id = c->join(worker_name, mocks[i].callback());
+            CAPTURE(id);
+            workers.push_back(id);
+        }
+        for (int64_t i = 0; i < test_size; i++) {
+            int64_t last_conf_id = 0;
+            while (true) {
+                auto data = mocks[i].get();
+                CAPTURE(i, last_conf_id, data.conf_id, data.rank, data.size);
+                REQUIRE(data.conf_id > last_conf_id);
+                REQUIRE(data.rank < data.size);
+                REQUIRE(data.size > 0);
+                REQUIRE(data.size <= test_size);
+                last_conf_id = data.conf_id;
+                if (data.size == test_size) {
+                    break;
+                }
+            }
+        }
+    }
 }
 
 TEMPLATE_TEST_CASE("controller-kv",
