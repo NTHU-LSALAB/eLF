@@ -3,6 +3,7 @@
 
 #include <tensorflow/core/framework/op_kernel.h>
 #include <tensorflow/core/framework/shape_inference.h>
+#include <tensorflow/core/framework/tensor_util.h>
 
 #include "operator.h"
 
@@ -55,10 +56,12 @@ public:
     explicit NoopForCpuOp(OpKernelConstruction *context) : OpKernel(context) {}
 
     void Compute(OpKernelContext *context) override {
-        auto tensor = context->input(0);
-        context->set_output(0, tensor);
+        auto input = context->input(0);
+        Tensor *output;
+        OP_REQUIRES_OK(context, context->allocate_output(0, input.shape(), &output));
+        *output = tensor::DeepCopy(input);
 
-        std::cerr << tensor.DebugString() << "\n";
+        std::cerr << input.DebugString() << "\n";
     }
 };
 

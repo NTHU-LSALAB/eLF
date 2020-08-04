@@ -28,6 +28,7 @@ class ElasticOptimizer(tf.train.Optimizer):
         self._operators = []  # hold the reference to C++ objects
         self._broadcast_op = self._make_broadcast_op(tf.global_variables())
         self._worker.broadcast_fn = self._broadcast_fn
+        self._session = None
         if name is None:
             name = 'Elastic' + type(optimizer).__name__
         super().__init__(name=name, use_locking=use_locking)
@@ -38,13 +39,14 @@ class ElasticOptimizer(tf.train.Optimizer):
     def _make_broadcast_op(self, variables):
         operations = []
         for var in variables:
+            print(var.name)
             operator = self._worker.add_global_variable(var.name)
             self._operators.append(operator)
             operations.append(var.assign(op.value_operator(var, handle=operator.get_handle())))
         return tf.group(*operations)
 
     def _broadcast_fn(self):
-        tf.get_default_session().run(self._broadcast_op)
+        (self._session or tf.get_default_session()).run(self._broadcast_op)
 
     def compute_gradients(self, *args, **kwargs):
         gradients = self._optimizer.compute_gradients(*args, **kwargs)

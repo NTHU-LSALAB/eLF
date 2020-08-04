@@ -26,6 +26,12 @@ class Worker(_elf.Worker):
         self.broadcast_fn = noop
 
     def shard_generator(self, list_=None, *, batch_size=1):
+        # XXX workaround: run 1 batch to fill placeholders
+        if list_ is None:
+            yield 0
+        else:
+            yield [x % len(list_) for x in range(batch_size)]
+
         while True:
             should_continue, requires_broadcast, shard_number = self.begin_batch()
             if not should_continue:
