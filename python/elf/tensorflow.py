@@ -28,10 +28,12 @@ class ElasticOptimizer(tf.train.Optimizer):
         self._operators = []  # hold the reference to C++ objects
         self._broadcast_op = self._make_broadcast_op(tf.global_variables())
         self._worker.broadcast_fn = self._broadcast_fn
-        self._worker.commit_and_join()
         if name is None:
             name = 'Elastic' + type(optimizer).__name__
         super().__init__(name=name, use_locking=use_locking)
+
+    def commit_and_join(self):
+        self._worker.commit_and_join()
 
     def _make_broadcast_op(self, variables):
         operations = []

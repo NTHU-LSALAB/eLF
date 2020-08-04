@@ -69,10 +69,11 @@ public:
         Communicator::DataType type,
         std::function<void()> done_callback) {
         assert(ready());
+        auto communicator = communicators.at(identifier).get();
+        assert(communicator);
         pool.Schedule([=]() {
             CUDA_CHECK(cudaSetDevice(gpu));
-            assert(communicators.at(identifier));
-            communicators.at(identifier)->allreduce(in, out, count, type);
+            communicator->allreduce(in, out, count, type);
             done_callback();
         });
         return true;
@@ -85,10 +86,11 @@ public:
         Communicator::DataType type,
         std::function<void()> done_callback) {
         assert(ready());
+        auto communicator = communicators.at(identifier).get();
+        assert(communicator);
         pool.Schedule([=]() {
             CUDA_CHECK(cudaSetDevice(gpu));
-            assert(communicators.at(identifier));
-            communicators.at(identifier)->broadcast(in, out, 0, count, type);
+            communicator->broadcast(in, out, 0, count, type);
             done_callback();
         });
         return true;
@@ -170,7 +172,7 @@ public:
         id = ctrl->join(name, [this](Controller::UpdateData data) {
             absl::MutexLock l(&conf_mux);
             if (deleted) {
-                std::cerr << "calling callback of deleted Worker\n";
+                std::cerr << "[elf warning] calling callback of deleted Worker\n";
                 return;
             }
             confs.emplace_back(gpu, data.conf_id, data.rank, data.size,
