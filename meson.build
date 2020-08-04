@@ -46,6 +46,18 @@ python_prog = find_program(python_installation.path())
 pybind11_proj = subproject('pybind11')
 pybind11_dep = pybind11_proj.get_variable('pybind11_dep')
 
+tf_dep_raw = run_command(python_prog, '-c', '''
+import tensorflow.sysconfig as conf
+print(*conf.get_compile_flags())
+print(*conf.get_link_flags())
+''',
+    check: true
+).stdout().split('\n')
+tf_dep = declare_dependency(
+    compile_args: tf_dep_raw[0].split(),
+    link_args: tf_dep_raw[1].split(),
+)
+
 # Note: libelf is something else
 elf_core = shared_library(
     'elf_core',
@@ -106,4 +118,16 @@ test('test_python',
     python_prog,
     args: [files('test_python.py')],
     env: ['PYTHONPATH=' + meson.current_build_dir()],
+)
+
+shared_library(
+    '_elf_tensorflow',
+    'python/_elf_tensorflow.cc',
+    dependencies: [tf_dep],
+)
+
+test('test_python_tensorflow',
+    python_prog,
+    args: [files('test_python_tensorflow.py')],
+    workdir: meson.current_build_dir(),
 )

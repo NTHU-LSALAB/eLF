@@ -8,6 +8,7 @@
 
 TEST_CASE("worker") {
     auto controller = elf::create_controller();
+    cudaSetDevice(0);
     elf::Worker w(controller.get());
 
     auto allreduce_op = w.add_global_variable("var1");
@@ -44,41 +45,31 @@ TEST_CASE("worker") {
         CHECK(Dsrc.cpu() == H);
         CHECK(Ddst.cpu() == H);
     }
-
-    SECTION("make sure the second worker doesn't break it") {
-        cudaSetDevice(1);
-        elf::Worker w2(controller.get());
-        auto allreduce_op2 = w2.add_global_variable("var1");
-        auto broadcast_op2 = w2.add_weight_variable("var1");
-        w2.commit_and_join();
-    }
 }
 
 TEST_CASE("2 workers") {
     absl::Mutex mu;
     auto controller = elf::create_controller();
     absl::Notification worker1_joined;
-    absl::Notification test_done;
+
+    cudaSetDevice(0);
+    elf::Worker w1(controller.get());
 
     std::thread t1([&]() { // worker 1
-        elf::Worker w(controller.get());
-        auto broadcast_op = w.add_global_variable("var1");
-        auto allreduce_op = w.add_weight_variable("var1");
-        w.commit_and_join();
+        auto broadcast_op = w1.add_global_variable("var1");
+        auto allreduce_op = w1.add_weight_variable("var1");
+        w1.commit_and_join();
         bool should_continue, requires_broadcast;
         int64_t shard_number;
-        std::tie(should_continue, requires_broadcast, shard_number) = w.begin_batch();
+        std::tie(should_continue, requires_broadcast, shard_number) = w1.begin_batch();
         CHECK(should_continue);
         CHECK_FALSE(requires_broadcast);
         worker1_joined.Notify();
 
         while (true) {
-            std::tie(should_continue, requires_broadcast, shard_number) = w.begin_batch();
+            std::tie(should_continue, requires_broadcast, shard_number) = w1.begin_batch();
             if (!should_continue) {
                 break;
-            }
-            if (test_done.HasBeenNotified()) {
-                w.leave();
             }
 
             { // broadcast
@@ -114,14 +105,15 @@ TEST_CASE("2 workers") {
     { // worker 2
         worker1_joined.WaitForNotification();
 
-        elf::Worker w(controller.get());
-        auto broadcast_op = w.add_global_variable("var1");
-        auto allreduce_op = w.add_weight_variable("var1");
-        w.commit_and_join();
+        cudaSetDevice(1);
+        elf::Worker w2(controller.get());
+        auto broadcast_op = w2.add_global_variable("var1");
+        auto allreduce_op = w2.add_weight_variable("var1");
+        w2.commit_and_join();
 
         bool should_continue, requires_broadcast;
         int64_t shard_number;
-        std::tie(should_continue, requires_broadcast, shard_number) = w.begin_batch();
+        std::tie(should_continue, requires_broadcast, shard_number) = w2.begin_batch();
         REQUIRE(should_continue);
         REQUIRE(requires_broadcast);
 
@@ -155,6 +147,6 @@ TEST_CASE("2 workers") {
             }
         }
     }
-    test_done.Notify();
+    w1.leave();
     t1.join();
 }
