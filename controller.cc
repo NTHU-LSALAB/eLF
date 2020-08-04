@@ -29,10 +29,10 @@ public:
     }
 };
 
-class LocalController : public Controller {
+class ConcreteController : public Controller {
 public:
-    LocalController() : update_thread(&LocalController::update_loop, this) {}
-    ~LocalController() override {
+    ConcreteController() : update_thread(&ConcreteController::update_loop, this) {}
+    ~ConcreteController() override {
         stop();
         update_thread.join();
     }
@@ -154,7 +154,7 @@ private:
         int64_t conf_id;
         int64_t ready_count = 0;
         std::unordered_map<int64_t, bool> workers;
-        ConfState(int64_t conf_id, const typeof(LocalController::workers) &wmap)
+        ConfState(int64_t conf_id, const typeof(ConcreteController::workers) &wmap)
             : conf_id(conf_id) {
             for (auto &w : wmap) {
                 if (w.second->leave_at > conf_id) {
@@ -194,7 +194,7 @@ private:
         while (true) {
             absl::MutexLock l(&worker_mux);
             worker_mux.Await(absl::Condition(
-                +[](LocalController *c) -> bool { return c->conf_id != c->processed_conf_id; },
+                +[](ConcreteController *c) -> bool { return c->conf_id != c->processed_conf_id; },
                 this));
             processed_conf_id = conf_id;
             if (conf_id == -1) {
@@ -224,5 +224,5 @@ private:
 };
 
 std::unique_ptr<Controller> create_controller() {
-    return std::make_unique<LocalController>();
+    return std::make_unique<ConcreteController>();
 }
