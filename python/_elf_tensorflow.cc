@@ -16,7 +16,7 @@ void *stringToPtr(const std::string &s) {
 }
 
 REGISTER_OP("ValueOperator")
-    .Attr("T: {float32, float64, int32}")
+    .Attr("T: {float32, float64, int32, int64}")
     .Attr("handle: string")
     .Input("input: T")
     .Output("output: T")
@@ -49,9 +49,26 @@ private:
     elf::Operator *elf_op;
 };
 
+// CPU variables like the step counter is (maybe) OK to ignore
+class NoopForCpuOp : public OpKernel {
+public:
+    explicit NoopForCpuOp(OpKernelConstruction *context) : OpKernel(context) {}
+
+    void Compute(OpKernelContext *context) override {
+        auto tensor = context->input(0);
+        context->set_output(0, tensor);
+
+        std::cerr << tensor.DebugString() << "\n";
+    }
+};
+
 REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<float>("T"),
     ValueOperatorOp<float>);
 REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<double>("T"),
     ValueOperatorOp<double>);
 REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<int32_t>("T"),
     ValueOperatorOp<int32_t>);
+REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<int64>("T"),
+    ValueOperatorOp<int64>);
+
+REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_CPU), NoopForCpuOp);
