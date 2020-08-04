@@ -260,7 +260,7 @@ public:
             current_conf++;
         }
         // TODO: gc
-        return {true, requires_broadcast, -99999};
+        return {true, requires_broadcast, ctrl->get_shard()};
     }
 };
 
