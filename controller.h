@@ -54,4 +54,20 @@ public:
     virtual void stop() = 0;
 };
 
+class ExportedController {
+protected:
+    ExportedController() {}
+
+public:
+    ExportedController(const ExportedController &) = delete;
+    virtual ~ExportedController() {}
+
+    virtual int listening_port() = 0;
+    virtual void stop() = 0;
+};
+
 std::unique_ptr<Controller> create_controller();
+
+std::unique_ptr<Controller> connect_controller(const std::string &address);
+
+std::unique_ptr<ExportedController> export_controller(Controller *c, const std::string &address);

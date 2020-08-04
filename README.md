@@ -1,15 +1,12 @@
 Dependencies:
 
-* [abseil-cpp](https://github.com/abseil/abseil-cpp)
 * [protobuf](https://developers.google.com/protocol-buffers)
 * [grpc](https://grpc.io/)
-* [catch2](https://github.com/catchorg/Catch2) (for testing)
 
 Build system:
 
 * [meson](https://mesonbuild.com/)
 * [ninja](https://ninja-build.org/)
-* [cmake](https://cmake.org/) (to use absl modules)
 
 Build instructions:
 

@@ -7,8 +7,14 @@ assert(
 )
 
 threads_dep = dependency('threads')
-absl_dep = dependency('absl', method: 'cmake', modules: ['absl::synchronization', 'absl::str_format'])
-test_deps = [dependency('catch2')]
+catch2_proj = subproject('catch2')
+test_deps = [catch2_proj.get_variable('catch2_dep')]
+
+absl_proj = subproject('abseil-cpp')
+absl_dep = [
+    absl_proj.get_variable('absl_strings_dep'),
+    absl_proj.get_variable('absl_synchronization_dep')
+]
 
 protoc = find_program('protoc')
 grpc_cpp_plugin = find_program('grpc_cpp_plugin')
@@ -43,5 +49,5 @@ test('core', test_core)
 shared_library(
     'shared_library_test_1',
     'rpc.cc', messages_generated,
-    dependencies: [grpc_deps]
+    dependencies: [absl_dep, threads_dep, grpc_deps]
 )

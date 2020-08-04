@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-service Coordinator {
-  rpc Join(JoinRequest) returns (stream Updates) {}
+service ControllerRPC {
+  rpc Join(JoinRequest) returns (stream Update) {}
   rpc Leave(LeaveRequest) returns (LeaveResponse) {}
   rpc BeginBatch(BeginBatchRequest) returns (BeginBatchResponse) {}
   rpc EndBatch(EndBatchRequest) returns (EndBatchResponse) {}
@@ -11,7 +11,7 @@ service Coordinator {
 
 message JoinRequest { string name = 1; }
 
-message Updates {
+message Update {
   int64 id = 1;
   int64 conf_id = 2;
   int64 rank = 3;
