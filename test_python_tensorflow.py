@@ -8,7 +8,7 @@ class TensorFlowTest(unittest.TestCase):
         self.module = tf.load_op_library('./lib_elf_tensorflow.so')
 
     def test_op_exist(self):
-        self.module.allreduce
+        self.module.value_operator
 
 
 if __name__ == '__main__':

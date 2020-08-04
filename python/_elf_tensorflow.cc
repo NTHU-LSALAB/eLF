@@ -3,7 +3,7 @@
 
 using namespace tensorflow;
 
-REGISTER_OP("Allreduce")
+REGISTER_OP("ValueOperator")
     .Attr("T: {float32, float64, int32}")
     .Attr("operator_ptr: string")
     .Input("input: T")
@@ -14,9 +14,9 @@ REGISTER_OP("Allreduce")
     });
 
 template <class T>
-class AllreduceOp : public OpKernel {
+class ValueOperatorOp : public OpKernel {
 public:
-    explicit AllreduceOp(OpKernelConstruction *context) : OpKernel(context) {}
+    explicit ValueOperatorOp(OpKernelConstruction *context) : OpKernel(context) {}
 
     void Compute(OpKernelContext *context) override {
         // Grab the input tensor
@@ -40,9 +40,9 @@ public:
     }
 };
 
-REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU).TypeConstraint<float>("T"),
-    AllreduceOp<float>);
-REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU).TypeConstraint<double>("T"),
-    AllreduceOp<double>);
-REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU).TypeConstraint<int32_t>("T"),
-    AllreduceOp<int32_t>);
+REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<float>("T"),
+    ValueOperatorOp<float>);
+REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<double>("T"),
+    ValueOperatorOp<double>);
+REGISTER_KERNEL_BUILDER(Name("ValueOperator").Device(DEVICE_GPU).TypeConstraint<int32_t>("T"),
+    ValueOperatorOp<int32_t>);
