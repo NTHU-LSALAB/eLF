@@ -133,7 +133,7 @@ private:
         int64_t conf_id;
         int64_t ready_count = 0;
         std::unordered_map<int64_t, bool> workers;
-        ConfState(int64_t conf_id, const typeof(ConcreteController::workers) &wmap)
+        ConfState(int64_t conf_id, const decltype(ConcreteController::workers) &wmap)
             : conf_id(conf_id) {
             for (auto &w : wmap) {
                 if (w.second->leave_at > conf_id) {
