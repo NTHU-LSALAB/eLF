@@ -45,10 +45,10 @@ TEST_CASE("workerconf 2 workers") {
     bool test_allreduce = false;
 
     SECTION("broadcast") {
-        test_broadcast = false;
+        test_broadcast = true;
     }
     SECTION("allreduce") {
-        test_allreduce = false;
+        test_allreduce = true;
     }
 
     std::thread t1([kvs, test_allreduce, test_broadcast, &mu]() {

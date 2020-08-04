@@ -12,12 +12,14 @@
 
 namespace elf {
 
-void assert_nccl(ncclResult_t result) {
+void nccl_assert(const char *filename, int lineno, ncclResult_t result) {
     if (result) {
-        throw std::runtime_error(
-            absl::StrFormat("ncclResult_t(%d): %s", result, ncclGetErrorString(result)));
+        throw std::runtime_error(absl::StrFormat(
+            "%s:%d: ncclResult_t(%d): %s", filename, lineno, result, ncclGetErrorString(result)));
     }
 }
+
+#define NCCL_ASSERT(expr) nccl_assert(__FILE__, __LINE__, expr)
 
 ncclDataType_t comm_type_to_nccl(Communicator::DataType type) {
     switch (type) {
@@ -59,7 +61,7 @@ public:
     }
 
     void allreduce(void *src, void *dst, size_t count, Communicator::DataType datatype) override {
-        assert_nccl(ncclAllReduce(src, dst, count, comm_type_to_nccl(datatype), ncclSum, comm, 0));
+        NCCL_ASSERT(ncclAllReduce(src, dst, count, comm_type_to_nccl(datatype), ncclSum, comm, 0));
     }
 
     void broadcast(void *src,
@@ -67,20 +69,20 @@ public:
         int root,
         size_t count,
         Communicator::DataType datatype) override {
-        assert_nccl(ncclBroadcast(src, dst, count, comm_type_to_nccl(datatype), root, comm, 0));
+        NCCL_ASSERT(ncclBroadcast(src, dst, count, comm_type_to_nccl(datatype), root, comm, 0));
     }
 
 private:
     void init() {
         ncclUniqueId nccl_id;
         if (rank == 0) {
-            assert_nccl(ncclGetUniqueId(&nccl_id));
+            NCCL_ASSERT(ncclGetUniqueId(&nccl_id));
             kvs->set(identifier, std::string(nccl_id.internal, NCCL_UNIQUE_ID_BYTES));
         } else {
             std::string id_str = kvs->get(identifier).get();
             memcpy(nccl_id.internal, id_str.c_str(), NCCL_UNIQUE_ID_BYTES);
         }
-        assert_nccl(ncclCommInitRank(&comm, size, nccl_id, rank));
+        NCCL_ASSERT(ncclCommInitRank(&comm, size, nccl_id, rank));
     }
 };
 
