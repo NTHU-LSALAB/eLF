@@ -111,7 +111,7 @@ python_installation.extension_module(
     '_elf',
     'python/_elf.cc',
     dependencies: [pybind11_dep, absl_dep, threads_dep, nccl_deps],
-    link_with: [elf_core],
+    link_with: [elf_core, elf_comm_nccl],
 )
 
 test('test_python',
