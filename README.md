@@ -9,7 +9,7 @@ Build system:
 
 * [meson](https://mesonbuild.com/)
 * [ninja](https://ninja-build.org/)
-* [cmake](https://cmake.org/)
+* [cmake](https://cmake.org/) (to use absl modules)
 
 Build instructions:
 
