@@ -24,6 +24,8 @@
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
 
+#include <pthread.h>
+
 #include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 
@@ -64,6 +66,7 @@ class ThreadPool {
   }
 
   void WorkLoop() {
+    pthread_setname_np(pthread_self(), "elf-pool");
     while (true) {
       std::function<void()> func;
       {
