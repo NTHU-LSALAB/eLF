@@ -186,7 +186,7 @@ private:
 };
 
 class RemoteController : public Controller {
-    std::unique_ptr<ClientContext> join_cctx;
+    std::shared_ptr<ClientContext> join_cctx;
 
 public:
     RemoteController(const std::string &address)
@@ -194,7 +194,7 @@ public:
               grpc::CreateChannel(address, grpc::InsecureChannelCredentials()))) {}
     ~RemoteController() override {
         if (join_cctx) {
-            join_cctx->TryCancel();
+            // join_cctx->TryCancel();
         }
         for (auto &thread : threads) {
             thread.join();
@@ -202,7 +202,7 @@ public:
     }
 
     int64_t join(const std::string &name, update_callback_t callback) override {
-        join_cctx = std::make_unique<ClientContext>();
+        join_cctx = std::make_shared<ClientContext>();
         JoinRequest in;
         in.set_name(name);
         auto reader = stub->Join(join_cctx.get(), in);
@@ -210,7 +210,7 @@ public:
         assert(reader->Read(&update));
         callback(Controller::UpdateData{update.conf_id(), update.rank(), update.size()});
         threads.emplace_back(
-            update_loop, update.id(), std::move(reader), callback);
+            update_loop, update.id(), join_cctx, std::move(reader), callback);
         return update.id();
     }
 
@@ -269,6 +269,7 @@ public:
 
 private:
     static void update_loop(int64_t id,
+        std::shared_ptr<grpc::ClientContext> cctx,
         std::unique_ptr<grpc::ClientReader<Update>> reader,
         update_callback_t callback) {
         Update update;
