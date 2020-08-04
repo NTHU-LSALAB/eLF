@@ -37,12 +37,15 @@ public:
     // make worker with the supplied id gracefully leave the worker pool
     virtual void leave(int64_t id) = 0;
 
+    using BeginBatchResult = std::tuple<int64_t, bool>;
     // start a training batch
     // id: worker identifier
     // ready_conf_id: the configuration that the worker is ready for
-    // returns the configuration id to use in this batch
-    // -1 is returned if training should be stopped
-    virtual std::future<int64_t> begin_batch(int64_t id, int64_t ready_conf_id) = 0;
+    //
+    // returns (conf_id, should_broadcast)
+    // conf_id: the configuration id to use in this batch
+    // should_broadcast: should broadcast first before the batch
+    virtual std::future<BeginBatchResult> begin_batch(int64_t id, int64_t ready_conf_id) = 0;
 
     // indicate that the batch is finished
     // only used for profiling

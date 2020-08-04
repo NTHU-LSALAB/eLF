@@ -16,6 +16,15 @@
 
 constexpr std::chrono::milliseconds wait_time(300);
 
+namespace Catch {
+template <>
+struct StringMaker<elf::Controller::BeginBatchResult> {
+    static std::string convert(elf::Controller::BeginBatchResult const &value) {
+        return absl::StrFormat("{%d, %d}", std::get<0>(value), std::get<1>(value));
+    }
+};
+} // namespace Catch
+
 TEST_CASE("library usage") {
     auto a = std::make_unique<std::promise<int>>();
     a->set_value(10);
@@ -34,6 +43,9 @@ TEST_CASE("library usage") {
         a.reset();
         REQUIRE(fut.get() == 10); // yes this works!
     }
+}
+
+TEST_CASE("confstate") {
 }
 
 class CallbackMock {
@@ -101,6 +113,8 @@ TEMPLATE_TEST_CASE("controller",
     TestConcreteController,
     TestRemoteController) {
 
+    using BeginBatchResult = elf::Controller::BeginBatchResult;
+
     TestType helper;
     elf::Controller *c = helper.controller();
 
@@ -121,7 +135,7 @@ TEMPLATE_TEST_CASE("controller",
         for (int i = 0; i < 3; i++) {
             auto fut = c->begin_batch(1, 1);
             REQUIRE(fut.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(fut.get() == 1);
+            REQUIRE(fut.get() == BeginBatchResult{1, false});
         }
     }
 
@@ -152,8 +166,7 @@ TEMPLATE_TEST_CASE("controller",
             // lets make sure that worker A can proceed with the old configuration
             auto futA = c->begin_batch(a, 1);
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            int64_t conf_id = futA.get();
-            REQUIRE(conf_id == 1);
+            REQUIRE(futA.get() == BeginBatchResult(1, false));
         }
 
         for (int i = 0; i < 3; i++) {
@@ -161,8 +174,7 @@ TEMPLATE_TEST_CASE("controller",
             // the old configuration should still be used
             auto futA = c->begin_batch(a, 2);
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            auto conf_id = futA.get();
-            REQUIRE(conf_id == 1);
+            REQUIRE(futA.get() == BeginBatchResult(1, false));
         }
 
         for (int i = 0; i < 3; i++) {
@@ -170,10 +182,12 @@ TEMPLATE_TEST_CASE("controller",
             // the new configuration should be used
             auto futB = c->begin_batch(b, 2);
             auto futA = c->begin_batch(a, 2);
+            bool should_require_broadcast = !i;
+            INFO(absl::StrFormat("loop i=%d", i));
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(2 == futA.get());
+            REQUIRE(futA.get() == BeginBatchResult(2, should_require_broadcast));
             REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(2 == futB.get());
+            REQUIRE(futB.get() == BeginBatchResult(2, should_require_broadcast));
         }
 
         // first worker requests leaving
@@ -189,18 +203,18 @@ TEMPLATE_TEST_CASE("controller",
             auto futB = c->begin_batch(b, 2);
             auto futA = c->begin_batch(a, 2);
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(2 == futA.get());
+            REQUIRE(futA.get() == BeginBatchResult(2, false));
             REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(2 == futB.get());
+            REQUIRE(futB.get() == BeginBatchResult(2, false));
         }
 
         SECTION("leaving worker reaches batch first") {
             auto futA = c->begin_batch(a, 2);
             auto futB = c->begin_batch(b, 3);
             REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(3 == futB.get());
+            REQUIRE(futB.get() == BeginBatchResult(3, false));
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(-1 == futA.get());
+            REQUIRE(futA.get() == BeginBatchResult(-1, false));
         }
 
         SECTION("existing workers reaches batch first") {
@@ -208,13 +222,13 @@ TEMPLATE_TEST_CASE("controller",
                 // new configuration is ready, so use new configuration
                 auto futB = c->begin_batch(b, 3);
                 REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
-                REQUIRE(3 == futB.get());
+                REQUIRE(futB.get() == BeginBatchResult(3, false));
             }
 
             // allow A to leave
             auto futA = c->begin_batch(a, 2);
             REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-            REQUIRE(-1 == futA.get());
+            REQUIRE(futA.get() == BeginBatchResult(-1, false));
         }
     }
 
@@ -293,7 +307,10 @@ TEMPLATE_TEST_CASE("controller",
         for (int64_t i = 0; i < test_size; i++) {
             futures.emplace_back(std::async(std::launch::async, [&, i]() {
                 while (true) {
-                    int64_t conf_id = c->begin_batch(workers[i], last_conf_id).get();
+                    int64_t conf_id;
+                    bool requires_broadcast_ignored;
+                    std::tie(conf_id, requires_broadcast_ignored) =
+                        c->begin_batch(workers[i], last_conf_id).get();
                     max[i].store(conf_id);
                     if (last_conf_id == conf_id) {
                         break;
@@ -352,7 +369,10 @@ TEMPLATE_TEST_CASE("controller",
             for (int64_t i = 0; i < this_step; i++) {
                 futures.emplace_back(std::async(std::launch::async, [&, i]() {
                     while (true) {
-                        int64_t conf_id = c->begin_batch(workers[i], last_conf_id).get();
+                        int64_t conf_id;
+                        bool requires_broadcast_ignored;
+                        std::tie(conf_id, requires_broadcast_ignored) =
+                            c->begin_batch(workers[i], last_conf_id).get();
                         max[i].store(conf_id);
                         if (last_conf_id == conf_id) {
                             break;

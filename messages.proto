@@ -29,7 +29,10 @@ message BeginBatchRequest {
   int64 ready_conf_id = 2;
 }
 
-message BeginBatchResponse { int64 conf_id = 1; }
+message BeginBatchResponse {
+  int64 conf_id = 1;
+  bool requires_broadcast = 2;
+}
 
 message EndBatchRequest { int64 id = 1; }
 

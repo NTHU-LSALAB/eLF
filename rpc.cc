@@ -18,6 +18,7 @@
 #include <grpcpp/server_builder.h>
 #include <stdexcept>
 
+#include "absl/strings/str_format.h"
 #include "absl/time/time.h"
 #include "controller.h"
 #include "messages.grpc.pb.h"
@@ -115,7 +116,9 @@ public:
     Status
     BeginBatch(ServerContext *, const BeginBatchRequest *in, BeginBatchResponse *out) override {
         auto future = c->begin_batch(in->id(), in->ready_conf_id());
-        out->set_conf_id(future.get());
+        auto result = future.get();
+        out->set_conf_id(std::get<0>(result));
+        out->set_requires_broadcast(std::get<1>(result));
         return Status::OK;
     }
 
@@ -214,15 +217,15 @@ public:
         check(stub->Leave(&cctx, in, &out));
     }
 
-    std::future<int64_t> begin_batch(int64_t id, int64_t ready_conf_id) override {
-        return std::async(std::launch::async, [id, ready_conf_id, this]() -> int64_t {
+    std::future<BeginBatchResult> begin_batch(int64_t id, int64_t ready_conf_id) override {
+        return std::async(std::launch::async, [id, ready_conf_id, this]() -> BeginBatchResult {
             ClientContext cctx;
             BeginBatchRequest in;
             BeginBatchResponse out;
             in.set_id(id);
             in.set_ready_conf_id(ready_conf_id);
             check(stub->BeginBatch(&cctx, in, &out));
-            return out.conf_id();
+            return {out.conf_id(), out.requires_broadcast()};
         });
     }
 

@@ -232,12 +232,14 @@ public:
                 }
             }
         }
-        int64_t batch_conf_id = ctrl->begin_batch(id, ready_conf->id).get();
+        int64_t batch_conf_id;
+        bool requires_broadcast;
+        std::tie(batch_conf_id, requires_broadcast) = ctrl->begin_batch(id, ready_conf->id).get();
         while (current_conf->id != batch_conf_id) {
             current_conf++;
         }
         // TODO: gc
-        return std::make_tuple(false, 0);
+        return std::make_tuple(requires_broadcast, 0);
     }
 };
 
