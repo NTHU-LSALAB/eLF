@@ -5,7 +5,7 @@ using namespace tensorflow;
 
 REGISTER_OP("ValueOperator")
     .Attr("T: {float32, float64, int32}")
-    .Attr("operator_ptr: string")
+    .Attr("handle: string")
     .Input("input: T")
     .Output("output: T")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext *c) {
