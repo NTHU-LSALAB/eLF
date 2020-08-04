@@ -1,4 +1,4 @@
-project('elfcore', 'cpp', default_options: ['cpp_std=c++17'])
+project('elfcore', 'cpp', default_options: ['cpp_std=c++14'])
 
 clang = meson.get_compiler('cpp')
 assert(
@@ -8,9 +8,9 @@ assert(
 
 threads_dep = dependency('threads')
 catch2_proj = subproject('catch2')
+test_deps = [catch2_proj.get_variable('catch2_dep')]
 nccl_deps = [dependency('cuda'), dependency('nccl')]
 openmp_dep = dependency('openmp')
-test_deps = [catch2_proj.get_variable('catch2_dep')]
 
 absl_proj = subproject('abseil-cpp')
 absl_dep = [
@@ -46,7 +46,7 @@ test_core = executable(
     dependencies: [test_deps, absl_dep, grpc_deps, threads_dep],
 )
 
-test('core', test_core, timeout: 10)
+test('test_core', test_core, timeout: 10)
 
 test_nccl = executable(
     'test_nccl',
@@ -54,4 +54,12 @@ test_nccl = executable(
     dependencies: [test_deps, absl_dep, threads_dep, nccl_deps, openmp_dep],
 )
 
-test('nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'])
+test('test_nccl', test_nccl, timeout: 10, env: ['NCCL_DEBUG=WARN'])
+
+test_worker = executable(
+    'test_worker',
+    'test_main.cc', 'test_worker.cc', 'controller.cc', 'nccl_communicator.cc',
+    dependencies: [test_deps, absl_dep, threads_dep, nccl_deps]
+)
+
+test('test_worker', test_worker, timeout: 10, env: ['NCCL_DEBUG=WARN'])
