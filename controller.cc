@@ -21,6 +21,7 @@ public:
         {
             absl::MutexLock l(&worker_mux);
             check();
+            active_workers++;
             worker_counter++;
             id = worker_counter;
             workers.emplace(std::make_pair(id, new WorkerHandle(id, name, callback)));
@@ -32,7 +33,8 @@ public:
     void leave(int64_t id) override {
         absl::MutexLock l(&worker_mux);
         check();
-        workers.erase(id);
+        active_workers--;
+        workers[id]->leave_at = conf_id + 1;
         commit();
     }
 
@@ -73,15 +75,18 @@ public:
     }
 
 private:
+    // tracking the last configuration
     int64_t conf_id = 0;
     int64_t processed_conf_id = 0;
     int64_t worker_counter = 0;
+    int64_t active_workers = 0;
     struct WorkerHandle {
         int64_t id;
         std::string name;
         update_callback_t callback;
+        int64_t leave_at;
         WorkerHandle(int64_t id, const std::string &name, update_callback_t callback)
-            : id(id), name(name), callback(callback) {}
+            : id(id), name(name), callback(callback), leave_at(0) {}
     };
     absl::Mutex worker_mux;
     std::unordered_map<int64_t, std::unique_ptr<WorkerHandle>> workers;
@@ -95,7 +100,10 @@ private:
         ConfState(int64_t conf_id, const typeof(LocalController::workers) &wmap)
             : conf_id(conf_id) {
             for (auto &w : wmap) {
-                workers[w.first] = false;
+                if (w.second->leave_at == 0 || w.second->leave_at > conf_id) {
+                    // still in worker pool or not left yet
+                    workers[w.first] = false;
+                }
             }
         }
         void clear() {
@@ -141,12 +149,13 @@ private:
 
     void broadcast_updates() {
         int rank = 0;
-        int64_t size = workers.size();
         for (auto &w : workers) {
-            if (auto callback = w.second->callback) {
-                callback({conf_id, rank, size});
+            if (!w.second->leave_at) {
+                if (auto callback = w.second->callback) {
+                    callback({conf_id, rank, active_workers});
+                }
+                rank++;
             }
-            rank++;
         }
     }
 
