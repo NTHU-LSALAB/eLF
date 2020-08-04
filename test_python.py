@@ -32,6 +32,8 @@ class BindingTest(unittest.TestCase):
         self.assertEqual(broadcast.get_handle()[:2], '0x')
         self.assertEqual(allreduce.get_handle()[:2], '0x')
 
+        worker.leave()
+
         ctrl.stop()
 
 

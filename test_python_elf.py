@@ -22,6 +22,8 @@ class ElfTest(unittest.TestCase):
         sg = worker.shard_generator()
         self.assertIsInstance(next(sg), int)
 
+        worker.leave()
+
     def test_worker_basic2(self):
         worker = elf.Worker('127.0.0.1:{}'.format(self.ctrl.listening_port))
 
