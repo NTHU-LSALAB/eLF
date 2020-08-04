@@ -45,9 +45,6 @@ TEST_CASE("library usage") {
     }
 }
 
-TEST_CASE("confstate") {
-}
-
 class CallbackMock {
     using ReturnType = elf::Controller::UpdateData;
     int64_t n_calls = 0;
