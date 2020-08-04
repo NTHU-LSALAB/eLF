@@ -4,13 +4,16 @@
 using namespace tensorflow;
 
 REGISTER_OP("Allreduce")
-    .Input("to_zero: int32")
-    .Output("zeroed: int32")
+    .Attr("T: {float32, float64, int32}")
+    .Attr("operator_ptr: string")
+    .Input("input: T")
+    .Output("output: T")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext *c) {
         c->set_output(0, c->input(0));
         return Status::OK();
     });
 
+template <class T>
 class AllreduceOp : public OpKernel {
 public:
     explicit AllreduceOp(OpKernelConstruction *context) : OpKernel(context) {}
@@ -18,12 +21,12 @@ public:
     void Compute(OpKernelContext *context) override {
         // Grab the input tensor
         const Tensor &input_tensor = context->input(0);
-        auto input = input_tensor.flat<int32>();
+        auto input = input_tensor.flat<T>();
 
         // Create an output tensor
         Tensor *output_tensor = NULL;
         OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
-        auto output_flat = output_tensor->flat<int32>();
+        auto output_flat = output_tensor->flat<T>();
 
         // Set all but the first element of the output tensor to 0.
         const int N = input.size();
@@ -37,4 +40,9 @@ public:
     }
 };
 
-REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU), AllreduceOp);
+REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU).TypeConstraint<float>("T"),
+    AllreduceOp<float>);
+REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU).TypeConstraint<double>("T"),
+    AllreduceOp<double>);
+REGISTER_KERNEL_BUILDER(Name("Allreduce").Device(DEVICE_GPU).TypeConstraint<int32_t>("T"),
+    AllreduceOp<int32_t>);
