@@ -36,3 +36,5 @@ public:
             output_flat(0) = input(0);
     }
 };
+
+REGISTER_KERNEL_BUILDER(Name("ZeroOut").Device(DEVICE_GPU), ZeroOutOp);
