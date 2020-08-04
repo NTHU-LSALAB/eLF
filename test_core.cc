@@ -96,7 +96,7 @@ struct TestRemoteController {
 };
 
 TEMPLATE_TEST_CASE("controller",
-    "[controller][rpc]",
+    "[controller][core][rpc]",
     TestConcreteController,
     TestRemoteController) {
 
@@ -218,8 +218,13 @@ TEMPLATE_TEST_CASE("controller",
     }
 }
 
-TEST_CASE("controller-kv") {
-    auto c = create_controller();
+TEMPLATE_TEST_CASE("controller-kv",
+    "[controller][kv][rpc]",
+    TestConcreteController,
+    TestRemoteController) {
+
+    TestType helper;
+    auto c = helper.controller();
 
     SECTION("get after set") {
         c->kv_set(1, "key", "value");
