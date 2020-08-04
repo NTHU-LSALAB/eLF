@@ -1,5 +1,6 @@
 #include <future>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <unordered_map>
 
@@ -39,21 +40,42 @@ public:
     }
 
     std::future<int64_t> begin_batch(int64_t id, int64_t ready_conf_id) override {
-
         std::future<int64_t> future;
         {
             absl::MutexLock l(&worker_mux);
-            waiters[id] = std::promise<int64_t>();
-            future = waiters[id].get_future();
+            if (workers.at(id)->leave_at <= conf_states.back().conf_id) {
+                // already left
+                // TODO: conf_states may be empty on wrong usage
+                std::promise<int64_t> p;
+                p.set_value(0);
+                future = p.get_future();
+                return future;
+            }
+            waiters.emplace_back(id, std::promise<int64_t>());
+            future = waiters.back().second.get_future();
             auto conf_state = conf_states.begin();
             for (; conf_state != conf_states.end(); conf_state++) {
                 if (conf_state->conf_id > ready_conf_id) {
                     continue;
                 }
                 if (conf_state->set_ready(id)) {
+                    // the given state is ready
                     int64_t conf_id = conf_state->conf_id;
-                    for (auto &w : conf_state->workers) {
-                        waiters.at(w.first).set_value(conf_id);
+                    for (auto waiter_it = waiters.begin(); waiter_it != waiters.end();) {
+                        if (conf_state->workers.find(waiter_it->first) !=
+                            conf_state->workers.end()) {
+                            // worker is active in this state
+                            waiter_it->second.set_value(conf_id);
+                            waiter_it = waiters.erase(waiter_it);
+                            continue;
+                        }
+                        if (workers.at(waiter_it->first)->leave_at <= conf_id) {
+                            // the worker can leave
+                            waiter_it->second.set_value(0);
+                            waiter_it = waiters.erase(waiter_it);
+                            continue;
+                        }
+                        waiter_it++;
                     }
                     conf_state++;
                     for (auto to_clear = conf_states.begin(); to_clear < conf_state; to_clear++) {
@@ -86,11 +108,12 @@ private:
         update_callback_t callback;
         int64_t leave_at;
         WorkerHandle(int64_t id, const std::string &name, update_callback_t callback)
-            : id(id), name(name), callback(callback), leave_at(0) {}
+            : id(id), name(name), callback(callback),
+              leave_at(std::numeric_limits<int64_t>::max()) {}
     };
     absl::Mutex worker_mux;
     std::unordered_map<int64_t, std::unique_ptr<WorkerHandle>> workers;
-    std::unordered_map<int64_t, std::promise<int64_t>> waiters;
+    std::deque<std::pair<int64_t, std::promise<int64_t>>> waiters;
     std::thread update_thread;
 
     struct ConfState {
@@ -100,8 +123,8 @@ private:
         ConfState(int64_t conf_id, const typeof(LocalController::workers) &wmap)
             : conf_id(conf_id) {
             for (auto &w : wmap) {
-                if (w.second->leave_at == 0 || w.second->leave_at > conf_id) {
-                    // still in worker pool or not left yet
+                if (w.second->leave_at > conf_id) {
+                    // not left yet
                     workers[w.first] = false;
                 }
             }
@@ -150,7 +173,7 @@ private:
     void broadcast_updates() {
         int rank = 0;
         for (auto &w : workers) {
-            if (!w.second->leave_at) {
+            if (w.second->leave_at > conf_id) {
                 if (auto callback = w.second->callback) {
                     callback({conf_id, rank, active_workers});
                 }

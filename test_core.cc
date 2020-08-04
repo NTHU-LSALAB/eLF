@@ -3,6 +3,7 @@
 #include <future>
 
 #include <absl/synchronization/mutex.h>
+#include <stdexcept>
 
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
@@ -10,6 +11,26 @@
 #include "controller.h"
 
 constexpr std::chrono::milliseconds wait_time(300);
+
+TEST_CASE("library usage") {
+    auto a = std::make_unique<std::promise<int>>();
+    a->set_value(10);
+    auto fut = a->get_future();
+
+    SECTION("get_future called multiple times") {
+        CHECK_THROWS_AS(a->get_future(), std::future_error);
+    }
+
+    SECTION("future retrived multiple times") {
+        REQUIRE(fut.get() == 10);
+        CHECK_THROWS_AS(fut.get(), std::future_error);
+    }
+
+    SECTION("associated promise deleted") {
+        a.reset();
+        REQUIRE(fut.get() == 10); // yes this works!
+    }
+}
 
 class CallbackMock {
     using ReturnType = Controller::UpdateData;
@@ -30,8 +51,11 @@ public:
         }
         assert(desired_n == 0);
         desired_n = n;
-        mux.AwaitWithTimeout(
+        bool status = mux.AwaitWithTimeout(
             absl::Condition(this, &CallbackMock::value_is_ready), absl::FromChrono(wait_time));
+        if (!status) {
+            throw std::runtime_error("callback not called in time");
+        }
         desired_n = 0;
         return value;
     }
@@ -117,7 +141,7 @@ TEST_CASE("controller") {
             REQUIRE(2 == futB.get());
         }
 
-        // first worker leaves
+        // first worker requests leaving
         c->leave(a);
         confB = mockB.get();
         REQUIRE(confB.conf_id == 3);
@@ -135,16 +159,27 @@ TEST_CASE("controller") {
             REQUIRE(2 == futB.get());
         }
 
-        for (int i = 0; i < 3; i++) {
-            // new configuration is ready, so use new configuration
+        SECTION("leaving worker reaches batch first") {
+            auto futA = c->begin_batch(a, 2);
             auto futB = c->begin_batch(b, 3);
             REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
             REQUIRE(3 == futB.get());
+            REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(0 == futA.get());
         }
 
-        // allow A to leave
-        auto futA = c->begin_batch(a, 2);
-        REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
-        REQUIRE(0 == futA.get());
+        SECTION("existing workers reaches batch first") {
+            for (int i = 0; i < 3; i++) {
+                // new configuration is ready, so use new configuration
+                auto futB = c->begin_batch(b, 3);
+                REQUIRE(futB.wait_for(wait_time) == std::future_status::ready);
+                REQUIRE(3 == futB.get());
+            }
+
+            // allow A to leave
+            auto futA = c->begin_batch(a, 2);
+            REQUIRE(futA.wait_for(wait_time) == std::future_status::ready);
+            REQUIRE(0 == futA.get());
+        }
     }
 }
