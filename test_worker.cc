@@ -1,4 +1,6 @@
 #include <array>
+#include <thread>
+#include <chrono>
 
 #include <absl/synchronization/notification.h>
 #include <catch2/catch.hpp>
@@ -99,6 +101,9 @@ TEST_CASE("2 workers") {
                     CHECK(Dsrc.cpu() == H);
                 }
             }
+
+            // let the controller take a breath
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
     });
 
