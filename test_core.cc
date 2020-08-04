@@ -287,6 +287,9 @@ TEMPLATE_TEST_CASE("controller",
 
         std::vector<std::future<void>> futures;
         std::vector<std::atomic_int64_t> max(test_size);
+        for (auto& m: max) {
+            m.store(-444);
+        }
         for (int64_t i = 0; i < test_size; i++) {
             futures.emplace_back(std::async(std::launch::async, [&, i]() {
                 while (true) {
@@ -302,7 +305,7 @@ TEMPLATE_TEST_CASE("controller",
         auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
         for (int64_t i = 0; i < test_size; i++) {
             INFO(
-                absl::StrFormat("Checking worker-%d(%d) reached:%d", i, workers[i], max[i].load()));
+                absl::StrFormat("Checking worker-%d(%d) conf_id:%d", i, workers[i], max[i].load()));
             CHECK(futures[i].wait_until(deadline) == std::future_status::ready);
             futures[i].get();
         }
