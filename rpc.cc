@@ -194,7 +194,7 @@ public:
               grpc::CreateChannel(address, grpc::InsecureChannelCredentials()))) {}
     ~RemoteController() override {
         if (join_cctx) {
-            // join_cctx->TryCancel();
+            join_cctx->TryCancel();
         }
         for (auto &thread : threads) {
             thread.join();
