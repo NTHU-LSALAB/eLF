@@ -39,6 +39,9 @@ Please have these installed before proceeding
     ```
 
 
-## Running
+## Usage
 
-See `examples/`
+* Start elf.Controller
+* Modify TensorFlow code with elf.Worker and elf.tensorflow.ElasticOptimizer
+* Start worker code to scale out
+* Call `Controller.leave(worker_id)` on the controller or `Worker.leave()` on the worker program to scale in
